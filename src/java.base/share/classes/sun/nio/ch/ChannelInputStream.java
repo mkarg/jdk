@@ -152,7 +152,7 @@ public class ChannelInputStream
             WritableByteChannel oc = cos.channel();
 
             if (ch instanceof FileChannel fc) {
-                return transfer(fc, oc);
+            	return transfer(fc, oc);
             }
 
             if (oc instanceof FileChannel fc) {

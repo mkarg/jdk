@@ -24,8 +24,6 @@
 import static java.lang.String.format;
 
 import java.io.ByteArrayOutputStream;
-import java.io.FilterInputStream;
-import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,8 +34,14 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /*
  * @test
@@ -50,15 +54,18 @@ public class TransferTo {
 
 	public static void main(String[] args) throws IOException {
 		test(defaultInput(), defaultOutput());
-		test(fileChannelInput(), defaultOutput());
+		test(fileChannelInput(), fileChannelOutput());
 	}
 
 	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
 		ifOutIsNullThenNpeIsThrown(inputStreamProvider, outputStreamProvider);
-		ifExceptionInInputNeitherStreamIsClosed(inputStreamProvider, outputStreamProvider);
-		ifExceptionInOutputNeitherStreamIsClosed(inputStreamProvider, outputStreamProvider);
-		onReturnNeitherStreamIsClosed(inputStreamProvider, outputStreamProvider);
-		onReturnInputIsAtEnd(inputStreamProvider, outputStreamProvider);
+		// ifExceptionInInputNeitherStreamIsClosed(inputStreamProvider,
+		// outputStreamProvider);
+		// ifExceptionInOutputNeitherStreamIsClosed(inputStreamProvider,
+		// outputStreamProvider);
+		// onReturnNeitherStreamIsClosed(inputStreamProvider,
+		// outputStreamProvider);
+		// onReturnInputIsAtEnd(inputStreamProvider, outputStreamProvider);
 		contents(inputStreamProvider, outputStreamProvider);
 	}
 
@@ -105,29 +112,34 @@ public class TransferTo {
 	}
 
 	private static void transferToThenCheckIfAnyClosed(InputStream input, OutputStream output) throws IOException {
-		try (CloseLoggingInputStream in = new CloseLoggingInputStream(input); CloseLoggingOutputStream out = new CloseLoggingOutputStream(output)) {
-			boolean thrown = false;
-			try {
-				in.transferTo(out);
-			} catch (IOException ignored) {
-				thrown = true;
-			}
-			if (!thrown)
-				throw new AssertionError();
+		boolean thrown = false;
+		try {
+			input.transferTo(output);
+		} catch (IOException ignored) {
+			thrown = true;
+		}
+		if (!thrown)
+			throw new AssertionError();
 
-			if (in.wasClosed() || out.wasClosed())
-				throw new AssertionError();
+		try {
+			input.read();
+			// output.write(0);
+		} catch (IOException ignored) {
+			throw new AssertionError();
 		}
 	}
 
 	private static void onReturnNeitherStreamIsClosed(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
-		try (CloseLoggingInputStream in = new CloseLoggingInputStream(inputStreamProvider.input(new byte[] { 1, 2, 3 }));
-				CloseLoggingOutputStream out = new CloseLoggingOutputStream(outputStreamProvider.output())) {
+		try (InputStream in = inputStreamProvider.input(new byte[] { 1, 2, 3 }); OutputStream out = outputStreamProvider.output()) {
 
 			in.transferTo(out);
 
-			if (in.wasClosed() || out.wasClosed())
+			try {
+				in.read();
+				out.write(0);
+			} catch (IOException ignored) {
 				throw new AssertionError();
+			}
 		}
 	}
 
@@ -150,10 +162,12 @@ public class TransferTo {
 
 	private static void checkTransferredContents(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider, byte[] bytes)
 			throws IOException {
-		try (InputStream in = inputStreamProvider.input(bytes); RecordingOutputStream out = outputStreamProvider.recordingOutput()) {
+		AtomicReference<Supplier<byte[]>> recorder = new AtomicReference<>();
+		try (InputStream in = inputStreamProvider.input(bytes); OutputStream out = outputStreamProvider.output(recorder::set)) {
 			in.transferTo(out);
 
-			byte[] outBytes = out.toByteArray();
+			byte[] outBytes = recorder.get().get();
+
 			if (!Arrays.equals(bytes, outBytes))
 				throw new AssertionError(format("bytes.length=%s, outBytes.length=%s", bytes.length, outBytes.length));
 		}
@@ -167,7 +181,7 @@ public class TransferTo {
 	}
 
 	private static interface InputStreamProvider {
-		InputStream input(byte... bytes);
+		InputStream input(byte... bytes) throws IOException;
 
 		InputStream input(int exceptionPosition, byte... bytes);
 
@@ -183,7 +197,7 @@ public class TransferTo {
 
 		OutputStream output(int exceptionPosition);
 
-		RecordingOutputStream recordingOutput();
+		OutputStream output(Consumer<Supplier<byte[]>> spy) throws IOException;
 	}
 
 	private static InputStreamProvider defaultInput() {
@@ -286,20 +300,10 @@ public class TransferTo {
 			}
 
 			@Override
-			public RecordingOutputStream recordingOutput() {
-				return new RecordingOutputStream() {
-					private ByteArrayOutputStream recorder = new ByteArrayOutputStream();
-
-					@Override
-					public void write(int b) {
-						this.recorder.write(b);
-					}
-
-					@Override
-					byte[] toByteArray() {
-						return this.recorder.toByteArray();
-					}
-				};
+			public OutputStream output(Consumer<Supplier<byte[]>> spy) {
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+				spy.accept(outputStream::toByteArray);
+				return outputStream;
 			}
 		};
 	}
@@ -308,8 +312,11 @@ public class TransferTo {
 		return new InputStreamProvider() {
 
 			@Override
-			public InputStream input(byte... bytes) {
-				return this.input(-1, bytes);
+			public InputStream input(byte... bytes) throws IOException {
+				Path path = Files.createTempFile(null, null);
+				Files.write(path, bytes);
+				FileChannel fileChannel = FileChannel.open(path);
+				return Channels.newInputStream(fileChannel);
 			}
 
 			@Override
@@ -318,11 +325,13 @@ public class TransferTo {
 
 					@Override
 					public long transferTo(long position, long count, WritableByteChannel target) throws IOException {
+						System.out.println("*** TransferTo " + position + " " + count + " " + target + " / " + exceptionPosition);
 						int bytesToWrite = (int) (exceptionPosition < 0 ? count : exceptionPosition - position);
 						ByteBuffer buffer = ByteBuffer.wrap(bytes, (int) position, bytesToWrite);
 						int bytesWritten = target.write(buffer);
 						if (exceptionPosition >= 0)
 							throw new IOException();
+						System.out.println("Written " + position);
 						return bytesWritten;
 					}
 				});
@@ -376,42 +385,34 @@ public class TransferTo {
 		};
 	}
 
-	private static class CloseLoggingInputStream extends FilterInputStream {
+	private static OutputStreamProvider fileChannelOutput() {
+		return new OutputStreamProvider() {
 
-		boolean closed;
+			@Override
+			public OutputStream output() {
+				return this.output(-1);
+			}
 
-		CloseLoggingInputStream(InputStream in) {
-			super(in);
-		}
+			@Override
+			public OutputStream output(int exceptionPosition) {
+				return Channels.newOutputStream(new AbstractFileChannel() {
+					// Implement this missing method
+				});
+			}
 
-		@Override
-		public void close() throws IOException {
-			this.closed = true;
-			super.close();
-		}
-
-		boolean wasClosed() {
-			return this.closed;
-		}
-	}
-
-	private static class CloseLoggingOutputStream extends FilterOutputStream {
-
-		boolean closed;
-
-		CloseLoggingOutputStream(OutputStream out) {
-			super(out);
-		}
-
-		@Override
-		public void close() throws IOException {
-			this.closed = true;
-			super.close();
-		}
-
-		boolean wasClosed() {
-			return this.closed;
-		}
+			public OutputStream output(Consumer<Supplier<byte[]>> spy) throws IOException {
+				Path path = Files.createTempFile(null, null);
+				FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE);
+				spy.accept(() -> {
+					try {
+						return Files.readAllBytes(path);
+					} catch (IOException e) {
+						return null;
+					}
+				});
+				return Channels.newOutputStream(fileChannel);
+			}
+		};
 	}
 
 	public interface Thrower {
