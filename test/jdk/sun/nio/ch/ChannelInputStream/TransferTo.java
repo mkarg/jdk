@@ -63,10 +63,12 @@ import java.util.jar.JarOutputStream;
 public class TransferTo {
 
 	public static void main(String[] args) throws Exception {
-		test(defaultInput(), defaultOutput());
-		test(fileChannelInput(), fileChannelOutput());
+		test(fileChannelInput(), writableByteChannelOutput());
 		test(seekableByteChannelInput(), fileChannelOutput());
+		test(readableByteChannelInput(), fileChannelOutput());
 		test(readableByteChannelInput(), writableByteChannelOutput());
+		test(defaultInput(), defaultOutput());
+		throw new AssertionError("Printing STDOUT...");
 	}
 
 	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
