@@ -27,21 +27,31 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 /*
  * @test
@@ -52,12 +62,13 @@ import java.util.function.Supplier;
  */
 public class TransferTo {
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws Exception {
 		test(defaultInput(), defaultOutput());
 		test(fileChannelInput(), fileChannelOutput());
+		test(seekableByteChannelInput(), fileChannelOutput());
 	}
 
-	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
+	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
 		ifOutIsNullThenNpeIsThrown(inputStreamProvider, outputStreamProvider);
 		// ifExceptionInInputNeitherStreamIsClosed(inputStreamProvider,
 		// outputStreamProvider);
@@ -69,7 +80,7 @@ public class TransferTo {
 		contents(inputStreamProvider, outputStreamProvider);
 	}
 
-	private static void ifOutIsNullThenNpeIsThrown(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
+	private static void ifOutIsNullThenNpeIsThrown(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
 		try (InputStream in = inputStreamProvider.input()) {
 			assertThrowsNPE(() -> in.transferTo(null), "out");
 		}
@@ -98,20 +109,20 @@ public class TransferTo {
 	}
 
 	private static void ifExceptionInInputNeitherStreamIsClosed(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider)
-			throws IOException {
+			throws Exception {
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(0, new byte[] { 1, 2, 3 }), outputStreamProvider.output());
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(1, new byte[] { 1, 2, 3 }), outputStreamProvider.output());
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(2, new byte[] { 1, 2, 3 }), outputStreamProvider.output());
 	}
 
 	private static void ifExceptionInOutputNeitherStreamIsClosed(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider)
-			throws IOException {
+			throws Exception {
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(new byte[] { 1, 2, 3 }), outputStreamProvider.output(0));
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(new byte[] { 1, 2, 3 }), outputStreamProvider.output(1));
 		transferToThenCheckIfAnyClosed(inputStreamProvider.input(new byte[] { 1, 2, 3 }), outputStreamProvider.output(2));
 	}
 
-	private static void transferToThenCheckIfAnyClosed(InputStream input, OutputStream output) throws IOException {
+	private static void transferToThenCheckIfAnyClosed(InputStream input, OutputStream output) throws Exception {
 		boolean thrown = false;
 		try {
 			input.transferTo(output);
@@ -129,7 +140,7 @@ public class TransferTo {
 		}
 	}
 
-	private static void onReturnNeitherStreamIsClosed(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
+	private static void onReturnNeitherStreamIsClosed(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
 		try (InputStream in = inputStreamProvider.input(new byte[] { 1, 2, 3 }); OutputStream out = outputStreamProvider.output()) {
 
 			in.transferTo(out);
@@ -143,7 +154,7 @@ public class TransferTo {
 		}
 	}
 
-	private static void onReturnInputIsAtEnd(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
+	private static void onReturnInputIsAtEnd(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
 		try (InputStream in = inputStreamProvider.input(new byte[] { 1, 2, 3 }); OutputStream out = outputStreamProvider.output()) {
 
 			in.transferTo(out);
@@ -153,7 +164,7 @@ public class TransferTo {
 		}
 	}
 
-	private static void contents(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws IOException {
+	private static void contents(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
 		checkTransferredContents(inputStreamProvider, outputStreamProvider, new byte[0]);
 		checkTransferredContents(inputStreamProvider, outputStreamProvider, createRandomBytes(1024, 4096));
 		// to span through several batches
@@ -161,7 +172,7 @@ public class TransferTo {
 	}
 
 	private static void checkTransferredContents(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider, byte[] bytes)
-			throws IOException {
+			throws Exception {
 		AtomicReference<Supplier<byte[]>> recorder = new AtomicReference<>();
 		try (InputStream in = inputStreamProvider.input(bytes); OutputStream out = outputStreamProvider.output(recorder::set)) {
 			in.transferTo(out);
@@ -181,7 +192,7 @@ public class TransferTo {
 	}
 
 	private static interface InputStreamProvider {
-		InputStream input(byte... bytes) throws IOException;
+		InputStream input(byte... bytes) throws Exception;
 
 		InputStream input(int exceptionPosition, byte... bytes);
 
@@ -411,6 +422,77 @@ public class TransferTo {
 					}
 				});
 				return Channels.newOutputStream(fileChannel);
+			}
+		};
+	}
+
+	private static InputStreamProvider seekableByteChannelInput() {
+		return new InputStreamProvider() {
+
+			@Override
+			public InputStream input(byte... bytes) throws Exception {
+				Path temporaryJarFile = Files.createTempFile(null, ".zip");
+				try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(temporaryJarFile))) {
+					final JarEntry jarEntry = new JarEntry("raw-bytes");
+					out.putNextEntry(jarEntry);
+					out.write(bytes);
+					out.closeEntry();
+				}
+				FileSystem zipFileSystem = FileSystems.newFileSystem(
+						new URI("jar", URLDecoder.decode(temporaryJarFile.toUri().toString(), StandardCharsets.UTF_8), null), Collections.emptyMap(), null);
+				SeekableByteChannel sbc = zipFileSystem.provider().newByteChannel(zipFileSystem.getPath("raw-bytes"), Collections.singleton(StandardOpenOption.READ));
+				return Channels.newInputStream(sbc);
+			}
+
+			@Override
+			public InputStream input(int exceptionPosition, byte... bytes) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public InputStream newThrowingInputStream() {
+				return new InputStream() {
+
+					boolean closed;
+
+					@Override
+					public int read(byte[] b) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int read(byte[] b, int off, int len) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public long skip(long n) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int available() throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public void close() throws IOException {
+						if (!this.closed) {
+							this.closed = true;
+							throw new IOException();
+						}
+					}
+
+					@Override
+					public void reset() throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int read() throws IOException {
+						throw new IOException();
+					}
+				};
 			}
 		};
 	}
