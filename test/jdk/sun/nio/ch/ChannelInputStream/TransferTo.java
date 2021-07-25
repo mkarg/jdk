@@ -23,12 +23,12 @@
 
 import static java.lang.String.format;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -66,6 +66,7 @@ public class TransferTo {
 		test(defaultInput(), defaultOutput());
 		test(fileChannelInput(), fileChannelOutput());
 		test(seekableByteChannelInput(), fileChannelOutput());
+		test(readableByteChannelInput(), fileChannelOutput());
 	}
 
 	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
@@ -442,6 +443,67 @@ public class TransferTo {
 						new URI("jar", URLDecoder.decode(temporaryJarFile.toUri().toString(), StandardCharsets.UTF_8), null), Collections.emptyMap(), null);
 				SeekableByteChannel sbc = zipFileSystem.provider().newByteChannel(zipFileSystem.getPath("raw-bytes"), Collections.singleton(StandardOpenOption.READ));
 				return Channels.newInputStream(sbc);
+			}
+
+			@Override
+			public InputStream input(int exceptionPosition, byte... bytes) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public InputStream newThrowingInputStream() {
+				return new InputStream() {
+
+					boolean closed;
+
+					@Override
+					public int read(byte[] b) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int read(byte[] b, int off, int len) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public long skip(long n) throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int available() throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public void close() throws IOException {
+						if (!this.closed) {
+							this.closed = true;
+							throw new IOException();
+						}
+					}
+
+					@Override
+					public void reset() throws IOException {
+						throw new IOException();
+					}
+
+					@Override
+					public int read() throws IOException {
+						throw new IOException();
+					}
+				};
+			}
+		};
+	}
+
+	private static InputStreamProvider readableByteChannelInput() {
+		return new InputStreamProvider() {
+
+			@Override
+			public InputStream input(byte... bytes) throws Exception {
+				return Channels.newInputStream(Channels.newChannel(new ByteArrayInputStream(bytes)));
 			}
 
 			@Override
