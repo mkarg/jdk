@@ -66,7 +66,7 @@ public class TransferTo {
 		test(defaultInput(), defaultOutput());
 		test(fileChannelInput(), fileChannelOutput());
 		test(seekableByteChannelInput(), fileChannelOutput());
-		test(readableByteChannelInput(), fileChannelOutput());
+		test(readableByteChannelInput(), writableByteChannelOutput());
 	}
 
 	private static void test(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider) throws Exception {
@@ -555,6 +555,27 @@ public class TransferTo {
 						throw new IOException();
 					}
 				};
+			}
+		};
+	}
+
+	private static OutputStreamProvider writableByteChannelOutput() {
+		return new OutputStreamProvider() {
+
+			@Override
+			public OutputStream output() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public OutputStream output(int exceptionPosition) {
+				throw new UnsupportedOperationException();
+			}
+
+			public OutputStream output(Consumer<Supplier<byte[]>> spy) throws IOException {
+				ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+				spy.accept(outputStream::toByteArray);
+				return Channels.newOutputStream(Channels.newChannel(outputStream));
 			}
 		};
 	}
