@@ -23,8 +23,6 @@
 
 import static java.lang.String.format;
 
-import static org.testng.Assert.fail;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -57,7 +55,7 @@ import jdk.test.lib.RandomFactory;
  * @key randomness
  */
 public class TransferTo {
-    private static final int MIN_SIZE      = 10_000;
+    private static final int MIN_SIZE = 10_000;
     private static final int MAX_SIZE_INCR = 100_000_000 - MIN_SIZE;
 
     private static final int ITERATIONS = 10;
@@ -66,10 +64,8 @@ public class TransferTo {
 
     @DataProvider
     public static Object[][] streamCombinations() throws Exception {
-        return new Object[][] {
-            { fileChannelInput(), fileChannelOutput() },
-            { readableByteChannelInput(), defaultOutput() }
-        };
+        return new Object[][] { { fileChannelInput(), fileChannelOutput() },
+                { readableByteChannelInput(), defaultOutput() } };
     }
 
     @Test(dataProvider = "streamCombinations", expectedExceptions = NullPointerException.class)
@@ -91,8 +87,8 @@ public class TransferTo {
     }
 
     @Test(dataProvider = "streamCombinations")
-    public void testStreamContents(InputStreamProvider inputStreamProvider,
-            OutputStreamProvider outputStreamProvider) throws Exception {
+    public void testStreamContents(InputStreamProvider inputStreamProvider, OutputStreamProvider outputStreamProvider)
+            throws Exception {
         checkTransferredContents(inputStreamProvider, outputStreamProvider, new byte[0]);
         checkTransferredContents(inputStreamProvider, outputStreamProvider, createRandomBytes(1024, 4096));
 
@@ -112,6 +108,18 @@ public class TransferTo {
 
         // beyond target EOF
         checkTransferredContents(inputStreamProvider, outputStreamProvider, createRandomBytes(4096, 0), 0, 4096);
+    }
+
+    /**
+     * Special test for file-to-file transfer to assert correctly iterating multiple
+     * 2-GB-transfers.
+     */
+    @Test
+    public void testHugeFileTransfer() {
+        // TODO Write 2GB+1 Byte file.
+        // TODO Create File Input and File Output
+        // TODO Call transferTo(file-to-file)
+        // TODO Check Files.mismath(sourceFile, targetFile)
     }
 
     private static void checkTransferredContents(InputStreamProvider inputStreamProvider,
@@ -155,51 +163,38 @@ public class TransferTo {
     }
 
     private static OutputStreamProvider defaultOutput() {
-        return new OutputStreamProvider() {
-            @Override
-            public OutputStream output(Consumer<Supplier<byte[]>> spy) {
-                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                spy.accept(outputStream::toByteArray);
-                return outputStream;
-            }
+        return spy -> {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            spy.accept(outputStream::toByteArray);
+            return outputStream;
         };
     }
 
     private static InputStreamProvider fileChannelInput() {
-        return new InputStreamProvider() {
-            @Override
-            public InputStream input(byte... bytes) throws Exception {
-                Path path = Files.createTempFile(null, null);
-                Files.write(path, bytes);
-                FileChannel fileChannel = FileChannel.open(path);
-                return Channels.newInputStream(fileChannel);
-            }
+        return bytes -> {
+            Path path = Files.createTempFile(null, null);
+            Files.write(path, bytes);
+            FileChannel fileChannel = FileChannel.open(path);
+            return Channels.newInputStream(fileChannel);
         };
     }
 
     private static InputStreamProvider readableByteChannelInput() {
-        return new InputStreamProvider() {
-            @Override
-            public InputStream input(byte... bytes) throws Exception {
-                return Channels.newInputStream(Channels.newChannel(new ByteArrayInputStream(bytes)));
-            }
-        };
+        return bytes -> Channels.newInputStream(Channels.newChannel(new ByteArrayInputStream(bytes)));
     }
 
     private static OutputStreamProvider fileChannelOutput() {
-        return new OutputStreamProvider() {
-            public OutputStream output(Consumer<Supplier<byte[]>> spy) throws Exception {
-                Path path = Files.createTempFile(null, null);
-                FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE);
-                spy.accept(() -> {
-                    try {
-                        return Files.readAllBytes(path);
-                    } catch (IOException e) {
-                        throw new AssertionError("Failed to verify output file", e);
-                    }
-                });
-                return Channels.newOutputStream(fileChannel);
-            }
+        return spy -> {
+            Path path = Files.createTempFile(null, null);
+            FileChannel fileChannel = FileChannel.open(path, StandardOpenOption.WRITE);
+            spy.accept(() -> {
+                try {
+                    return Files.readAllBytes(path);
+                } catch (IOException e) {
+                    throw new AssertionError("Failed to verify output file", e);
+                }
+            });
+            return Channels.newOutputStream(fileChannel);
         };
     }
 
