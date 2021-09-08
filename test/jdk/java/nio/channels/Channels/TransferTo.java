@@ -33,6 +33,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicReference;
@@ -55,7 +56,7 @@ import jdk.test.lib.RandomFactory;
  * @key randomness
  */
 public class TransferTo {
-    private static final int MIN_SIZE = 10_000;
+    private static final int MIN_SIZE      = 10_000;
     private static final int MAX_SIZE_INCR = 100_000_000 - MIN_SIZE;
 
     private static final int ITERATIONS = 10;
@@ -110,25 +111,13 @@ public class TransferTo {
         checkTransferredContents(inputStreamProvider, outputStreamProvider, createRandomBytes(4096, 0), 0, 4096);
     }
 
-    /**
-     * Special test for file-to-file transfer to assert correctly iterating multiple
-     * 2-GB-transfers.
-     */
-    @Test
-    public void testHugeFileTransfer() {
-        // TODO Write 2GB+1 Byte file.
-        // TODO Create File Input and File Output
-        // TODO Call transferTo(file-to-file)
-        // TODO Check Files.mismath(sourceFile, targetFile)
-    }
-
     private static void checkTransferredContents(InputStreamProvider inputStreamProvider,
-            OutputStreamProvider outputStreamProvider, byte[] inBytes) throws Exception {
+            OutputStreamProvider outputStreamProvider, List<byte[]> inBytes) throws Exception {
         checkTransferredContents(inputStreamProvider, outputStreamProvider, inBytes, 0, 0);
     }
 
     private static void checkTransferredContents(InputStreamProvider inputStreamProvider,
-            OutputStreamProvider outputStreamProvider, byte[] inBytes, int posIn, int posOut) throws Exception {
+            OutputStreamProvider outputStreamProvider, List<byte[]> inBytes, int posIn, int posOut) throws Exception {
         AtomicReference<Supplier<byte[]>> recorder = new AtomicReference<>();
         try (InputStream in = inputStreamProvider.input(inBytes);
                 OutputStream out = outputStreamProvider.output(recorder::set)) {
@@ -142,16 +131,26 @@ public class TransferTo {
             if (reported != count)
                 fail(format("reported %d bytes but should report %d", reported, count));
 
-            byte[] outBytes = recorder.get().get();
-            if (!Arrays.equals(inBytes, posIn, posIn + count, outBytes, posOut, posOut + count))
-                fail(format("inBytes.length=%d, outBytes.length=%d", count, outBytes.length));
+            List<byte[]> outBytes = recorder.get().get();
+            outBytes.forEach(outBucket -> {
+// TODO Will not work as posOut will intersect buckets                
+                if (!Arrays.equals(inBucket, posIn, posIn + count, outBucket, posOut, posOut + count))
+                    fail(format("inBytes.length=%d, outBytes.length=%d", count, outBytes.length));
+            });
         }
     }
 
-    private static byte[] createRandomBytes(int min, int maxRandomAdditive) {
-        byte[] bytes = new byte[min + (maxRandomAdditive == 0 ? 0 : RND.nextInt(maxRandomAdditive))];
-        RND.nextBytes(bytes);
-        return bytes;
+    private static List<byte[]> createRandomBytes(long min, long maxRandomAdditive) {
+        List<byte[]> buckets = new ArrayList<>();
+        long size = min + (maxRandomAdditive == 0 ? 0 : RND.nextInt(maxRandomAdditive));
+        do {
+            int length = Math.min(size, 1024 * 1024 * 1024);
+            byte[] bytes = new byte[length];
+            RND.nextBytes(bytes);
+            buckets.add(bytes);
+            size -= length;
+        } while (size > 0) {
+        return buckets;
     }
 
     private interface InputStreamProvider {
@@ -159,7 +158,7 @@ public class TransferTo {
     }
 
     private interface OutputStreamProvider {
-        OutputStream output(Consumer<Supplier<byte[]>> spy) throws Exception;
+        OutputStream output(Consumer<Supplier<List<byte[]>>> spy) throws Exception;
     }
 
     private static OutputStreamProvider defaultOutput() {
