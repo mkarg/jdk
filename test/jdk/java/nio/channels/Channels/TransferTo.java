@@ -27,19 +27,27 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -47,6 +55,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -54,6 +64,7 @@ import org.testng.annotations.Test;
 import jdk.test.lib.RandomFactory;
 
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;
 
 import static org.testng.Assert.assertEquals;
@@ -94,18 +105,21 @@ public class TransferTo {
             // tests FileChannel.transferTo(FileChannel) optimized case
             { fileChannelInput(), fileChannelOutput() },
 
-            // tests FileChannel.transferTo(SelectableChannelOutput)
+            // tests FileChannel.transferTo(SelectableChannel)
             // optimized case
             { fileChannelInput(), selectableChannelOutput() },
 
-            // tests FileChannel.transferTo(WritableByteChannelOutput)
+            // tests FileChannel.transferTo(WritableByteChannel)
             // optimized case
             { fileChannelInput(), writableByteChannelOutput() },
 
-            // tests FileChannel.transferFrom(SelectableChannelOutput) optimized case
+            // tests FileChannel.transferFrom(SelectableChannel) optimized case
             { selectableChannelInput(), fileChannelOutput() },
 
-            // tests FileChannel.transferFrom(ReadableByteChannelInput) optimized case
+            // tests FileChannel.transferFrom(SeekableByteChannel) optimized case
+            { seekableByteChannelInput(), fileChannelOutput() },
+
+            // tests FileChannel.transferFrom(ReadableByteChannel) optimized case
             { readableByteChannelInput(), fileChannelOutput() },
 
             // tests InputStream.transferTo(OutputStream) default case
@@ -363,6 +377,31 @@ public class TransferTo {
                 Files.write(path, bytes);
                 FileChannel fileChannel = FileChannel.open(path);
                 return Channels.newInputStream(fileChannel);
+            }
+        };
+    }
+
+    /*
+     * Creates a provider for an input stream which wraps a seekable byte
+     * channel but is not a file channel
+     */
+    private static InputStreamProvider seekableByteChannelInput() {
+        return new InputStreamProvider() {
+            @Override
+            public InputStream input(byte... bytes) throws Exception {
+                Path temporaryJarFile = Files.createTempFile(CWD, "seekableChannelInput", ".zip");
+                try (JarOutputStream out = new JarOutputStream(Files.newOutputStream(temporaryJarFile))) {
+                    JarEntry jarEntry = new JarEntry("raw-bytes");
+                    out.putNextEntry(jarEntry);
+                    out.write(bytes);
+                    out.closeEntry();
+                }
+                FileSystem zipFileSystem = FileSystems.newFileSystem(
+                        new URI("jar", URLDecoder.decode(temporaryJarFile.toUri().toString(), UTF_8), null),
+                        Map.of(), null);
+                SeekableByteChannel sbc = zipFileSystem.provider().newByteChannel(zipFileSystem.getPath("raw-bytes"),
+                        Set.of(READ));
+                return Channels.newInputStream(sbc);
             }
         };
     }

@@ -260,9 +260,16 @@ public class ChannelInputStream
                     synchronized (sc.blockingLock()) {
                         if (!sc.isBlocking())
                             throw new IllegalBlockingModeException();
+
+                        if (rbc instanceof SeekableByteChannel sbc)
+                            return transfer(sbc, fc);
+
                         return transfer(rbc, fc);
                     }
                 }
+
+                if (rbc instanceof SeekableByteChannel sbc)
+                    return transfer(sbc, fc);
 
                 return transfer(rbc, fc);
             }
@@ -282,6 +289,20 @@ public class ChannelInputStream
             src.position(pos);
         }
         return pos - initialPos;
+    }
+
+    private static long transfer(SeekableByteChannel src, FileChannel dst) throws IOException {
+        long bytesWritten = 0L;
+        long dstPos = dst.position();
+        long srcPos = src.position();
+        try {
+            while (srcPos + bytesWritten < src.size()) {
+                bytesWritten += dst.transferFrom(src, dstPos + bytesWritten, Long.MAX_VALUE);
+            }
+            return bytesWritten;
+        } finally {
+            dst.position(dstPos + bytesWritten);
+        }
     }
 
     private static long transfer(ReadableByteChannel src, FileChannel dst) throws IOException {
