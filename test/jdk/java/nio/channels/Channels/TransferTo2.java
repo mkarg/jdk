@@ -93,6 +93,18 @@ public class TransferTo2 {
 
             // tests FileChannel.transferFrom(ReadableByteChannelInput) optimized case
             { readableByteChannelInput(), fileChannelOutput() },
+
+            // tests loop-over-channels optimized case (input and output are selectable)
+            { selectableChannelInput(), selectableChannelOutput() },
+
+            // tests loop-over-channels optimized case (input is selectable)
+            { selectableChannelInput(), writableByteChannel() },
+
+            // tests loop-over-channels optimized case (output is selectable)
+            { readableByteChannelInput(), selectableChannelOutput() },
+
+            // tests loop-over-channels optimized case (default)
+            { readableByteChannelInput(), writableByteChannel() }
         };
     }
 
@@ -332,6 +344,33 @@ public class TransferTo2 {
                 }
             }).start();
             return Channels.newInputStream(pipe.source());
+        };
+    }
+
+    /*
+     * Creates a provider for an output stream which wraps a selectable channel
+     */
+    private static OutputStreamProvider selectableChannelOutput() {
+        return spy -> {
+            Pipe pipe = Pipe.open();
+            Future<byte[]> bytes = CompletableFuture.supplyAsync(() -> {
+                try {
+                    InputStream is = Channels.newInputStream(pipe.source());
+                    return is.readAllBytes();
+                } catch (IOException e) {
+                    throw new AssertionError("Exception while asserting content", e);
+                }
+            });
+            final OutputStream os = Channels.newOutputStream(pipe.sink());
+            spy.accept(() -> {
+                try {
+                    os.close();
+                    return bytes.get();
+                } catch (IOException | InterruptedException | ExecutionException e) {
+                    throw new AssertionError("Exception while asserting content", e);
+                }
+            });
+            return os;
         };
     }
 

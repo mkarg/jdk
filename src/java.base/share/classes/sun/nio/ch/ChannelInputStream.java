@@ -239,9 +239,10 @@ public class ChannelInputStream
         Objects.requireNonNull(out, "out");
 
         if (out instanceof ChannelOutputStream cos) {
-            if (ch instanceof FileChannel fc) {
-                WritableByteChannel wbc = cos.channel();
+            ReadableByteChannel rbc = ch;
+            WritableByteChannel wbc = cos.channel();
 
+            if (rbc instanceof FileChannel fc) {
                 if (wbc instanceof SelectableChannel sc) {
                     synchronized (sc.blockingLock()) {
                         if (!sc.isBlocking())
@@ -253,9 +254,7 @@ public class ChannelInputStream
                 return transfer(fc, wbc);
             }
 
-            if (cos.channel() instanceof FileChannel fc) {
-                ReadableByteChannel rbc = ch;
-
+            if (wbc instanceof FileChannel fc) {
                 if (rbc instanceof SelectableChannel sc) {
                     synchronized (sc.blockingLock()) {
                         if (!sc.isBlocking())
@@ -266,6 +265,29 @@ public class ChannelInputStream
 
                 return transfer(rbc, fc);
             }
+
+            if (rbc instanceof SelectableChannel rsc) {
+                synchronized (rsc.blockingLock()) {
+                    if (!rsc.isBlocking())
+                        throw new IllegalBlockingModeException();
+                    if (wbc instanceof SelectableChannel wsc) {
+                        synchronized (wsc.blockingLock()) {
+                            if (!wsc.isBlocking())
+                                throw new IllegalBlockingModeException();
+                            return transfer(rbc, wbc);
+                        }
+                    }
+                    return transfer(rbc, wbc);
+                }
+            }
+            if (wbc instanceof SelectableChannel wsc) {
+                synchronized (wsc.blockingLock()) {
+                    if (!wsc.isBlocking())
+                        throw new IllegalBlockingModeException();
+                    return transfer(rbc, wbc);
+                }
+            }
+            return transfer(rbc, wbc);
         }
 
         return super.transferTo(out);
@@ -296,5 +318,23 @@ public class ChannelInputStream
             dst.position(pos);
         }
         return pos - initialPos;
+    }
+
+    private static long transfer(ReadableByteChannel src, WritableByteChannel dst) throws IOException {
+        long transferred = 0L;
+        ByteBuffer buffer = Util.getTemporaryDirectBuffer(DEFAULT_BUFFER_SIZE);
+        try {
+            int read;
+            while ((read = src.read(buffer)) >= 0) {
+                buffer.flip();
+                while (buffer.hasRemaining())
+                    dst.write(buffer);
+                buffer.clear();
+                transferred += read;
+            }
+            return transferred;
+        } finally {
+            Util.releaseTemporaryDirectBuffer(buffer);
+        }
     }
 }
