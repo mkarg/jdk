@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.ReadableByteChannel;
@@ -37,6 +38,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.LongSupplier;
 
 import jdk.internal.util.ArraysSupport;
 
@@ -244,49 +246,45 @@ public class ChannelInputStream
             WritableByteChannel wbc = cos.channel();
 
             if (rbc instanceof FileChannel fc) {
-                if (wbc instanceof SelectableChannel sc) {
-                    synchronized (sc.blockingLock()) {
-                        assertBlocking(sc);
-                        return transfer(fc, wbc);
-                    }
-                }
+                if (wbc instanceof SelectableChannel sc)
+                    return supplyBlocking(sc, () -> transfer(fc, wbc));
 
                 return transfer(fc, wbc);
             }
 
             if (wbc instanceof FileChannel fc) {
-                if (rbc instanceof SelectableChannel sc) {
-                    synchronized (sc.blockingLock()) {
-                        assertBlocking(sc);
-                        return transfer(rbc, fc);
-                    }
-                }
+                if (rbc instanceof SelectableChannel sc)
+                    return supplyBlocking(sc, () -> transfer(rbc, fc));
 
                 return transfer(rbc, fc);
             }
 
             if (rbc instanceof SelectableChannel rsc) {
-                synchronized (rsc.blockingLock()) {
-                    assertBlocking(rsc);
-                    if (wbc instanceof SelectableChannel wsc) {
-                        synchronized (wsc.blockingLock()) {
-                            assertBlocking(wsc);
-                            return transfer(rbc, wbc);
-                        }
-                    }
+                return supplyBlocking(rsc, () -> {
+                    if (wbc instanceof SelectableChannel wsc)
+                        return supplyBlocking(wsc, () -> transfer(rbc, wbc));
+
                     return transfer(rbc, wbc);
-                }
+                });
             }
-            if (wbc instanceof SelectableChannel wsc) {
-                synchronized (wsc.blockingLock()) {
-                    assertBlocking(wsc);
-                    return transfer(rbc, wbc);
-                }
-            }
+            if (wbc instanceof SelectableChannel wsc)
+                return supplyBlocking(wsc, () -> transfer(rbc, wbc));
+
             return transfer(rbc, wbc);
         }
 
         return super.transferTo(out);
+    }
+
+    private interface ThrowingLongSupplier<T extends Throwable> {
+        long getAsLong() throws T;
+    }
+
+    private static long supplyBlocking(SelectableChannel sc, ThrowingLongSupplier<IOException> s) throws IOException {
+        synchronized (sc.blockingLock()) {
+            assertBlocking(sc);
+            return s.getAsLong();
+        }
     }
 
     private static void assertBlocking(SelectableChannel sc) {
