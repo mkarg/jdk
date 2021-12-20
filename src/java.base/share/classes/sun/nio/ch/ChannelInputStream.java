@@ -37,6 +37,7 @@ import java.nio.channels.SelectableChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Objects;
+
 import jdk.internal.util.ArraysSupport;
 
 /**
@@ -245,8 +246,7 @@ public class ChannelInputStream
             if (rbc instanceof FileChannel fc) {
                 if (wbc instanceof SelectableChannel sc) {
                     synchronized (sc.blockingLock()) {
-                        if (!sc.isBlocking())
-                            throw new IllegalBlockingModeException();
+                        assertBlocking(sc);
                         return transfer(fc, wbc);
                     }
                 }
@@ -257,8 +257,7 @@ public class ChannelInputStream
             if (wbc instanceof FileChannel fc) {
                 if (rbc instanceof SelectableChannel sc) {
                     synchronized (sc.blockingLock()) {
-                        if (!sc.isBlocking())
-                            throw new IllegalBlockingModeException();
+                        assertBlocking(sc);
                         return transfer(rbc, fc);
                     }
                 }
@@ -268,12 +267,10 @@ public class ChannelInputStream
 
             if (rbc instanceof SelectableChannel rsc) {
                 synchronized (rsc.blockingLock()) {
-                    if (!rsc.isBlocking())
-                        throw new IllegalBlockingModeException();
+                    assertBlocking(rsc);
                     if (wbc instanceof SelectableChannel wsc) {
                         synchronized (wsc.blockingLock()) {
-                            if (!wsc.isBlocking())
-                                throw new IllegalBlockingModeException();
+                            assertBlocking(wsc);
                             return transfer(rbc, wbc);
                         }
                     }
@@ -282,8 +279,7 @@ public class ChannelInputStream
             }
             if (wbc instanceof SelectableChannel wsc) {
                 synchronized (wsc.blockingLock()) {
-                    if (!wsc.isBlocking())
-                        throw new IllegalBlockingModeException();
+                    assertBlocking(wsc);
                     return transfer(rbc, wbc);
                 }
             }
@@ -291,6 +287,11 @@ public class ChannelInputStream
         }
 
         return super.transferTo(out);
+    }
+
+    private static void assertBlocking(SelectableChannel sc) {
+        if (!sc.isBlocking())
+            throw new IllegalBlockingModeException();
     }
 
     private static long transfer(FileChannel src, WritableByteChannel dst) throws IOException {
