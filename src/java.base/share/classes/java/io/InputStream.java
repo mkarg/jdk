@@ -53,7 +53,16 @@ public abstract class InputStream implements Closeable {
     // use when skipping.
     private static final int MAX_SKIP_BUFFER_SIZE = 2048;
 
-    private static final int DEFAULT_BUFFER_SIZE = 8192;
+    private static volatile int BUFFER_SIZE = 8192;
+
+    /**
+     * Set buffer size.
+     *
+     * @param bufferSize The new buffer size.
+     */
+    public static void setBufferSize(final int bufferSize) {
+        BUFFER_SIZE = bufferSize;
+    }
 
     /**
      * Constructor for subclasses to call.
@@ -402,7 +411,7 @@ public abstract class InputStream implements Closeable {
         int remaining = len;
         int n;
         do {
-            byte[] buf = new byte[Math.min(remaining, DEFAULT_BUFFER_SIZE)];
+            byte[] buf = new byte[Math.min(remaining, BUFFER_SIZE)];
             int nread = 0;
 
             // read to EOF which may read more or less than buffer size
@@ -785,9 +794,9 @@ public abstract class InputStream implements Closeable {
     public long transferTo(OutputStream out) throws IOException {
         Objects.requireNonNull(out, "out");
         long transferred = 0;
-        byte[] buffer = new byte[DEFAULT_BUFFER_SIZE];
+        byte[] buffer = new byte[BUFFER_SIZE];
         int read;
-        while ((read = this.read(buffer, 0, DEFAULT_BUFFER_SIZE)) >= 0) {
+        while ((read = this.read(buffer, 0, BUFFER_SIZE)) >= 0) {
             out.write(buffer, 0, read);
             transferred += read;
         }
