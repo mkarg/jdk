@@ -251,6 +251,21 @@ class ChannelInputStream extends InputStream {
             }
         }
 
+        if (out instanceof ChannelOutputStream cos) {
+            ReadableByteChannel rbc = ch;
+            WritableByteChannel wbc = cos.channel();
+
+            if (wbc instanceof SelectableChannel sc) {
+                synchronized (sc.blockingLock()) {
+                    if (!sc.isBlocking())
+                        throw new IllegalBlockingModeException();
+                    return transfer1(rbc, wbc);
+                }
+            }
+
+            return transfer1(rbc, wbc);
+        }
+
         return super.transferTo(out);
     }
 
@@ -272,6 +287,28 @@ class ChannelInputStream extends InputStream {
             fc.position(pos);
         }
         return pos - initialPos;
+    }
+
+    /**
+     * Transfers all bytes from a readable byte channel a target writable byte channel.
+     * If the writable byte channel is a selectable channel then it must be in
+     * blocking mode.
+     */
+    private static long transfer1(ReadableByteChannel src, WritableByteChannel dst) throws IOException {
+        long bytesWritten = 0L;
+        ByteBuffer bb = Util.getTemporaryDirectBuffer(DEFAULT_BUFFER_SIZE);
+        try {
+            for (int bytesRead = src.read(bb); bytesRead > -1; bytesRead = src.read(bb)) {
+                bb.flip();
+                while (bb.hasRemaining())
+                    dst.write(bb);
+                bb.clear();
+                bytesWritten += bytesRead;
+            }
+            return bytesWritten;
+        } finally {
+            Util.releaseTemporaryDirectBuffer(bb);
+        }
     }
 
     @Override
