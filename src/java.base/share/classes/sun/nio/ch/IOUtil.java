@@ -587,6 +587,12 @@ public final class IOUtil {
      */
     static native int drain1(int fd) throws IOException;
 
+    /**
+     * Read and discard at most n bytes
+     * @return the number of bytes read or IOS_INTERRUPTED
+     */
+    static native long drainN(int fd, long n) throws IOException;
+
     public static native void configureBlocking(FileDescriptor fd,
                                                 boolean blocking)
         throws IOException;
