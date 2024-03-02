@@ -362,4 +362,33 @@ class SourceChannelImpl
     public long read(ByteBuffer[] dsts) throws IOException {
         return read(dsts, 0, dsts.length);
     }
+
+    @Override
+    public long skip(long n) throws IOException {
+        if (n == 0)
+            return 0;
+
+        readLock.lock();
+        try {
+            boolean blocking = isBlocking();
+            long ns = 0;
+            try {
+                beginRead(blocking);
+                configureSocketNonBlockingIfVirtualThread();
+                ns = IOUtil.drainN(fdVal, n);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(ns) && isOpen()) {
+                        park(Net.POLLIN);
+                        ns = IOUtil.drainN(fdVal, n);
+                    }
+                }
+            } finally {
+                endRead(blocking, ns > 0);
+                assert IOStatus.check(n);
+            }
+            return IOStatus.normalize(n);
+        } finally {
+            readLock.unlock();
+        }
+    }
 }

@@ -31,6 +31,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.IllegalBlockingModeException;
+import java.nio.channels.Pipe;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SelectableChannel;
@@ -217,6 +218,12 @@ class ChannelInputStream extends InputStream {
             sbc.position(newPos);
             return newPos - pos;
         }
+
+        // special case where the channel is to a pipe
+        if (ch instanceof Pipe.SourceChannel psc) {
+            return psc.skip(n);
+        }
+
         return super.skip(n);
     }
 
