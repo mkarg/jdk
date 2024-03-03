@@ -219,9 +219,8 @@ class ChannelInputStream extends InputStream {
         }
 
         // special case where the channel is to a pipe
-        if (ch instanceof SourceChannelImpl sci) {
+        if (ch instanceof SourceChannelImpl sci)
             return sci.skip(n);
-        }
 
         return super.skip(n);
     }

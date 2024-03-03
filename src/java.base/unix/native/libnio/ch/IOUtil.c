@@ -155,7 +155,7 @@ Java_sun_nio_ch_IOUtil_drain1(JNIEnv *env, jclass cl, jint fd)
 JNIEXPORT jlong JNICALL
 Java_sun_nio_ch_IOUtil_drainN(JNIEnv *env, jclass cl, jint fd, jlong n)
 {
-    if (n == 0)
+    if (n < 1)
         return 0;
 
     const long bs = n < MAX_SKIP_BUFFER_SIZE ? n : MAX_SKIP_BUFFER_SIZE;
