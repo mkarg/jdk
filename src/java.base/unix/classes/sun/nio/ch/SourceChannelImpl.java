@@ -363,7 +363,16 @@ class SourceChannelImpl
         return read(dsts, 0, dsts.length);
     }
 
-    @Override
+    /**
+     * Skips up to n bytes.
+     *
+     * @param n The number of bytes to skip.
+     *
+     * @return  The number of skipped bytes.
+     *
+     * @throws  IOException
+     *          If an I/O error occurs
+     */
     public long skip(long n) throws IOException {
         if (n == 0)
             return 0;
