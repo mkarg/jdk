@@ -28,8 +28,6 @@ package java.nio.channels;
 import java.io.IOException;
 import java.nio.channels.spi.*;
 
-import sun.nio.ch.Util;
-
 
 /**
  * A pair of channels that implements a unidirectional pipe.
@@ -62,10 +60,6 @@ public abstract class Pipe {
         extends AbstractSelectableChannel
         implements ReadableByteChannel, ScatteringByteChannel
     {
-        // MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-        // use when skipping.
-        private static final int MAX_SKIP_BUFFER_SIZE = 8192;
-
         /**
          * Constructs a new instance of this class.
          *
@@ -89,42 +83,6 @@ public abstract class Pipe {
             return SelectionKey.OP_READ;
         }
 
-        /**
-         * Skips up to n bytes.
-         *
-         * @param n The number of bytes to skip.
-         *
-         * @return  The number of skipped bytes.
-         *
-         * @throws  IOException
-         *          If an I/O error occurs
-         */
-        public long skip(final long n) throws IOException {
-            if (n == 0)
-                return 0;
-
-            final int bs = Math.toIntExact(Math.min(n, MAX_SKIP_BUFFER_SIZE));
-            long tn = 0;
-            final var bb = Util.getTemporaryDirectBuffer(bs);
-            try {
-                for (;;) {
-                    final long remaining = n - tn;
-                    final int count = Math.toIntExact(Math.min(remaining, bs));
-                    bb.limit(count);
-                    final int nr = this.read(bb);
-                    tn += nr;
-                    if (nr < 0)
-                        return tn;
-                    if (nr == bs) {
-                        bb.rewind();
-                        continue;
-                    }
-                    return tn;
-                }
-            } finally {
-                Util.releaseTemporaryDirectBuffer(bb);
-            }
-        }
     }
 
     /**
