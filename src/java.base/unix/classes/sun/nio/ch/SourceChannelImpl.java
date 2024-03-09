@@ -384,7 +384,6 @@ class SourceChannelImpl
      * @param      n   the number of bytes to be skipped.
      * @return     the actual number of bytes skipped which might be zero.
      * @throws     IOException  if an I/O error occurs.
-     * @see        java.io.InputStream#skipNBytes(long)
      */
     public long skip(long n) throws IOException {
         if (n < 1)

@@ -1627,4 +1627,78 @@ class SocketChannelImpl
         sb.append(']');
         return sb.toString();
     }
+
+    /**
+     * Skips over and discards {@code n} bytes of data from this source
+     * channel. The {@code skip} method may, for a variety of reasons, end
+     * up skipping over some smaller number of bytes, possibly {@code 0}.
+     * This may result from any of a number of conditions; reaching end of file
+     * before {@code n} bytes have been skipped is only one possibility.
+     * The actual number of bytes skipped is returned. If {@code n} is
+     * negative, the {@code skip} method for class {@code SocketChannelImpl} always
+     * returns 0, and no bytes are skipped. Subclasses may handle the negative
+     * value differently.
+     *
+     * @implSpec
+     * The {@code skip} method implementation of this class creates a
+     * byte array and then repeatedly reads into it until {@code n} bytes
+     * have been read or the end of the stream has been reached. Subclasses are
+     * encouraged to provide a more efficient implementation of this method.
+     * For instance, the implementation may depend on the ability to seek.
+     *
+     * @param      n   the number of bytes to be skipped.
+     * @return     the actual number of bytes skipped which might be zero.
+     * @throws     IOException  if an I/O error occurs.
+     */
+    public long skip(long n) throws IOException {
+        if (n < 1)
+            return 0;
+
+        if (!SocketReadEvent.enabled()) {
+            return implSkip(n);
+        }
+        long start = SocketReadEvent.timestamp();
+        long nbytes = implSkip(n);
+        SocketReadEvent.offer(start, nbytes, remoteAddress(), 0);
+        return nbytes;
+    }
+
+    private long implSkip(long nt) throws IOException {
+        readLock.lock();
+        try {
+            ensureOpenAndConnected();
+            boolean blocking = isBlocking();
+            long n = 0;
+            try {
+                beginRead(blocking);
+
+                // check if connection has been reset
+                if (connectionReset)
+                    throwConnectionReset();
+
+                // check if input is shutdown
+                if (isInputClosed)
+                    return IOStatus.EOF;
+
+                configureSocketNonBlockingIfVirtualThread();
+                n = IOUtil.drainN(fdVal, nt);
+                if (blocking) {
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLIN);
+                        n = IOUtil.drainN(fdVal, nt);
+                    }
+                }
+            } catch (ConnectionResetException e) {
+                connectionReset = true;
+                throwConnectionReset();
+            } finally {
+                endRead(blocking, n > 0);
+                if (n <= 0 && isInputClosed)
+                    return IOStatus.EOF;
+            }
+            return IOStatus.normalize(n);
+        } finally {
+            readLock.unlock();
+        }
+    }
 }
