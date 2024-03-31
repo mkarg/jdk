@@ -61,6 +61,9 @@ public class Skip_2GB extends SkipBase {
             // tests FileChannel.skip() optimized case
             fileChannelInput_2G(),
 
+            // tests SourceChannelImpl.skip() optimized case
+            sourceChannelImplInput_2G(),
+
             // tests InputStream.skip() default case
             readableByteChannelInput_2G()
         };
@@ -184,6 +187,24 @@ public class Skip_2GB extends SkipBase {
         return bytes -> {
             FileChannel fileChannel = FileChannel.open(bytes);
             return Channels.newInputStream(fileChannel);
+        };
+    }
+
+    /*
+     * Creates a provider for an input stream which wraps a pipe channel
+     */
+    private static InputStreamProvider_2G sourceChannelImplInput_2G() {
+        return bytes -> {
+            Pipe pipe = Pipe.open();
+            new Thread(() -> {
+                try (OutputStream os = Channels.newOutputStream(pipe.sink());
+                        InputStream is = Files.newInputStream(bytes)) {
+                    is.transferTo(os);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }).start();
+            return Channels.newInputStream(pipe.source());
         };
     }
 

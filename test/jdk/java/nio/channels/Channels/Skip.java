@@ -23,6 +23,7 @@
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.Pipe;
@@ -54,6 +55,9 @@ public class Skip extends SkipBase {
             // tests FileChannel.skip() optimized case
             fileChannelInput(),
 
+            // tests SourceChannelImpl.skip() optimized case
+            sourceChannelImplInput(),
+
             // tests InputStream.skip() default case
             readableByteChannelInput()
         };
@@ -77,6 +81,23 @@ public class Skip extends SkipBase {
             Files.write(path, bytes);
             FileChannel fileChannel = FileChannel.open(path);
             return Channels.newInputStream(fileChannel);
+        };
+    }
+
+    /*
+     * Creates a provider for an input stream which wraps a pipe channel
+     */
+    private static InputStreamProvider sourceChannelImplInput() {
+        return bytes -> {
+            Pipe pipe = Pipe.open();
+            new Thread(() -> {
+                try (OutputStream os = Channels.newOutputStream(pipe.sink())) {
+                    os.write(bytes);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }).start();
+            return Channels.newInputStream(pipe.source());
         };
     }
 
