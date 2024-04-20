@@ -26,9 +26,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.Pipe;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -63,6 +68,9 @@ public class Skip_2GB extends SkipBase {
 
             // tests SourceChannelImpl.skip() optimized case
             sourceChannelImplInput_2G(),
+
+            // tests SourceChannelImpl.skip() optimized case
+            socketChannelInput_2G(),
 
             // tests InputStream.skip() default case
             readableByteChannelInput_2G()
@@ -205,6 +213,39 @@ public class Skip_2GB extends SkipBase {
                 }
             }).start();
             return Channels.newInputStream(pipe.source());
+        };
+    }
+
+    /*
+     * Creates a provider for an input stream which wraps a socket channel
+     */
+    private static InputStreamProvider_2G socketChannelInput_2G() {
+        return bytes -> {
+            try {
+                SocketAddress loopback = new InetSocketAddress(
+                        InetAddress.getLoopbackAddress(), 0);
+                ServerSocketChannel serverSocket = ServerSocketChannel.open()
+                        .bind(loopback);
+                new Thread(() -> {
+                    try (SocketChannel client = SocketChannel.open(
+                                serverSocket.getLocalAddress());
+                            OutputStream os = Channels.newOutputStream(client);
+                            InputStream is = Files.newInputStream(bytes)) {
+                        is.transferTo(os);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    } finally {
+                        try {
+                            serverSocket.close();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }).start();
+                return Channels.newInputStream(serverSocket.accept());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         };
     }
 
