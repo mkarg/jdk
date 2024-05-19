@@ -475,6 +475,14 @@ public final class IOUtil {
         }
     }
 
+    /**
+     * Skip at most n bytes
+     * @return the number of bytes skipped or IOS_INTERRUPTED
+     */
+    static long skip(FileDescriptor fd, long n, NativeDispatcher nd) throws IOException {
+        return nd.skip(fd, n);
+    }
+
     private static final JavaNioAccess NIO_ACCESS = SharedSecrets.getJavaNioAccess();
 
     static void acquireScope(ByteBuffer bb, boolean async) {
@@ -586,12 +594,6 @@ public final class IOUtil {
      * @return the number of bytes read or IOS_INTERRUPTED
      */
     static native int drain1(int fd) throws IOException;
-
-    /**
-     * Read and discard at most n bytes
-     * @return the number of bytes read or IOS_INTERRUPTED
-     */
-    static native long drainN(int fd, long n) throws IOException;
 
     public static native void configureBlocking(FileDescriptor fd,
                                                 boolean blocking)

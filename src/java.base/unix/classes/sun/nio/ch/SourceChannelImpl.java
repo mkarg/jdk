@@ -396,11 +396,11 @@ class SourceChannelImpl
             try {
                 beginRead(blocking);
                 configureSocketNonBlockingIfVirtualThread();
-                ns = IOUtil.drainN(fdVal, n);
+                ns = IOUtil.skip(fd, n, nd);
                 if (blocking)
                     while (IOStatus.okayToRetry(ns) && isOpen()) {
                         park(Net.POLLIN);
-                        ns = IOUtil.drainN(fdVal, n);
+                        ns = IOUtil.skip(fd, n, nd);
                     }
             } finally {
                 endRead(blocking, ns > 0);

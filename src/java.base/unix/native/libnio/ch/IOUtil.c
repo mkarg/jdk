@@ -39,10 +39,6 @@
 
 static jfieldID fd_fdID;        /* for jint 'fd' in java.io.FileDescriptor */
 
-// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-// use when skipping.
-static const ssize_t MAX_SKIP_BUFFER_SIZE = 4096;
-
 JNIEXPORT void JNICALL
 Java_sun_nio_ch_IOUtil_initIDs(JNIEnv *env, jclass clazz)
 {
@@ -150,38 +146,6 @@ Java_sun_nio_ch_IOUtil_drain1(JNIEnv *env, jclass cl, jint fd)
         }
     }
     return res;
-}
-
-JNIEXPORT jlong JNICALL
-Java_sun_nio_ch_IOUtil_drainN(JNIEnv *env, jclass cl, jint fd, jlong n)
-{
-    if (n < 1)
-        return 0;
-
-    const long bs = n < MAX_SKIP_BUFFER_SIZE ? (long) n : MAX_SKIP_BUFFER_SIZE;
-    char buf[bs];
-    jlong tn = 0;
-
-    for (;;) {
-        const jlong remaining = n - tn;
-        const ssize_t count = remaining < bs ? (ssize_t) remaining : bs;
-        const ssize_t nr = read(fd, buf, count);
-        if (nr < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return tn;
-            } else if (errno == EINTR) {
-                return IOS_INTERRUPTED;
-            } else {
-                JNU_ThrowIOExceptionWithLastError(env, "read");
-                return IOS_THROWN;
-            }
-        }
-        if (nr > 0)
-            tn += nr;
-        if (nr == bs)
-            continue;
-        return tn;
-    }
 }
 
 JNIEXPORT jint JNICALL
