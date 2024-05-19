@@ -1686,11 +1686,11 @@ class SocketChannelImpl
                     return IOStatus.EOF;
 
                 configureSocketNonBlockingIfVirtualThread();
-                n = IOUtil.drainN(fdVal, nt);
+                n = IOUtil.skip(fd, nt, nd);
                 if (blocking) {
                     while (IOStatus.okayToRetry(n) && isOpen()) {
                         park(Net.POLLIN);
-                        n = IOUtil.drainN(fdVal, nt);
+                        n = IOUtil.skip(fd, nt, nd);
                     }
                 }
             } catch (ConnectionResetException e) {

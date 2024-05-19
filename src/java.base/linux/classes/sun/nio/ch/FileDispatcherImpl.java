@@ -46,6 +46,14 @@ class FileDispatcherImpl extends UnixFileDispatcherImpl {
         return transferFrom0(src, dst, position, count, append);
     }
 
+    /**
+     * Skip at most n bytes
+     * @return the number of bytes skipped or IOS_INTERRUPTED
+     */
+    long skip(FileDescriptor fd, long n) {
+        return skip0(fd, n);
+    }
+
     // -- Native methods --
 
     static native long transferTo0(FileDescriptor src, long position,
@@ -56,6 +64,8 @@ class FileDispatcherImpl extends UnixFileDispatcherImpl {
                                      long position, long count, boolean append);
 
     static native void init0();
+
+    private static native long skip0(FileDescriptor fd, long n);
 
     static {
         IOUtil.load();
