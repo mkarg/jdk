@@ -42,5 +42,11 @@ class PipeDispatcherImpl extends FileDispatcherImpl {
 
     // -- Native methods --
 
+    static native void init0();
+
+    static {
+        init0();
+    }
+
     private static native long skip0(FileDescriptor fd, long n);
 }
