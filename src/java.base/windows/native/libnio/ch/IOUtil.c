@@ -178,42 +178,6 @@ Java_sun_nio_ch_IOUtil_drain(JNIEnv *env, jclass cl, jint fd)
     }
 }
 
-JNIEXPORT jlong JNICALL
-Java_sun_nio_ch_IOUtil_drainN(JNIEnv *env, jclass cl, jint fd, jlong n)
-{
-    if (n < 1)
-        return 0;
-
-    jlong tn = 0;
-    char buf[4096];
-
-    for (;;) {
-        const int c = (int) min(n - tn, sizeof(buf));
-
-        if (c == 0)
-            return convertLongReturnVal(env, tn, JNI_TRUE);
-
-        const int read = recv((SOCKET) fd, buf, c, 0);
-        if (read == SOCKET_ERROR) {
-            const int err = WSAGetLastError();
-            if (err == WSAEWOULDBLOCK) {
-                return tn == 0 ? IOS_UNAVAILABLE : tn;
-            }
-            if (err == WSAECONNRESET) {
-                JNU_ThrowByName(env, "sun/net/ConnectionResetException", "Connection reset");
-            } else {
-                JNU_ThrowIOExceptionWithLastError(env, "Read failed");
-            }
-            return IOS_THROWN;
-        }
-
-        tn += read;
-
-        if (read == 0)
-            return convertLongReturnVal(env, tn, JNI_TRUE);
-    }
-}
-
 JNIEXPORT jint JNICALL
 Java_sun_nio_ch_IOUtil_write1(JNIEnv *env, jclass cl, jint fd, jbyte b)
 {
