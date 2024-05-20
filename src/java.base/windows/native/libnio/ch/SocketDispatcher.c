@@ -34,6 +34,10 @@
 #include "nio.h"
 #include "nio_util.h"
 
+// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
+// use when skipping.
+static const long MAX_SKIP_BUFFER_SIZE = 4096;
+
 
 /**************************************************************
  * SocketDispatcher.c
@@ -284,5 +288,44 @@ Java_sun_nio_ch_SocketDispatcher_close0(JNIEnv *env, jclass clazz, jint fd)
 {
     if (closesocket(fd) == SOCKET_ERROR) {
         JNU_ThrowIOExceptionWithLastError(env, "Socket close failed");
+    }
+}
+
+JNIEXPORT jlong JNICALL
+Java_sun_nio_ch_SocketDispatcher_skip0(JNIEnv *env, jclass cl, jobject fdo, jlong n)
+{
+    if (n < 1)
+        return 0;
+
+    const jint fd = fdval(env, fdo);
+
+    const long bs = n < MAX_SKIP_BUFFER_SIZE ? (long) n : MAX_SKIP_BUFFER_SIZE;
+    char buf[bs];
+    jlong tn = 0;
+
+    for (;;) {
+        const int c = (int) min(n - tn, bs);
+
+        if (c == 0)
+            return convertLongReturnVal(env, tn, JNI_TRUE);
+
+        const int read = recv((SOCKET) fd, buf, c, 0);
+        if (read == SOCKET_ERROR) {
+            const int err = WSAGetLastError();
+            if (err == WSAEWOULDBLOCK) {
+                return tn == 0 ? IOS_UNAVAILABLE : tn;
+            }
+            if (err == WSAECONNRESET) {
+                JNU_ThrowByName(env, "sun/net/ConnectionResetException", "Connection reset");
+            } else {
+                JNU_ThrowIOExceptionWithLastError(env, "Read failed");
+            }
+            return IOS_THROWN;
+        }
+
+        tn += read;
+
+        if (read == 0)
+            return convertLongReturnVal(env, tn, JNI_TRUE);
     }
 }
