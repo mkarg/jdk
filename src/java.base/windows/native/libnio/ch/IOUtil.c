@@ -43,10 +43,6 @@ static jfieldID handle_fdID;
 /* field id for jint 'fd' in java.io.FileDescriptor used for socket fds */
 static jfieldID fd_fdID;
 
-// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-// use when skipping.
-static const int MAX_SKIP_BUFFER_SIZE = 4096;
-
 JNIEXPORT jboolean JNICALL
 Java_sun_security_provider_NativeSeedGenerator_nativeGenerateSeed
 (JNIEnv *env, jclass clazz, jbyteArray randArray);

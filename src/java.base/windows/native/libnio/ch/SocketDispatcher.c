@@ -34,10 +34,6 @@
 #include "nio.h"
 #include "nio_util.h"
 
-// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-// use when skipping.
-static const long MAX_SKIP_BUFFER_SIZE = 4096;
-
 
 /**************************************************************
  * SocketDispatcher.c
@@ -299,12 +295,11 @@ Java_sun_nio_ch_SocketDispatcher_skip0(JNIEnv *env, jclass cl, jobject fdo, jlon
 
     const jint fd = fdval(env, fdo);
 
-    const long bs = n < MAX_SKIP_BUFFER_SIZE ? (long) n : MAX_SKIP_BUFFER_SIZE;
-    char buf[bs];
+    char buf[4096];
     jlong tn = 0;
 
     for (;;) {
-        const int c = (int) min(n - tn, bs);
+        const int c = (int) min(n - tn, sizeof(buf));
 
         if (c == 0)
             return convertLongReturnVal(env, tn, JNI_TRUE);
