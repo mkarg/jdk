@@ -74,7 +74,7 @@ class SocketDispatcher extends UnixDispatcher {
         preClose0(fd);
     }
 
-    long skip(FileDescriptor fd, long n) {
+    long skip(FileDescriptor fd, long n) throws IOException {
         return skip0(fd, n);
     }
 
@@ -92,7 +92,8 @@ class SocketDispatcher extends UnixDispatcher {
     static native long writev0(FileDescriptor fd, long address, int len)
         throws IOException;
 
-    private static native long skip0(FileDescriptor fd, long n);
+    static native long skip0(FileDescriptor fd, long n)
+        throws IOException;
 
     static {
         IOUtil.load();
