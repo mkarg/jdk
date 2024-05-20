@@ -31,10 +31,6 @@
 #include "nio_util.h"
 #include "sun_nio_ch_FileDispatcherImpl.h"
 
-// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-// use when skipping.
-static const ssize_t MAX_SKIP_BUFFER_SIZE = 4096;
-
 typedef ssize_t copy_file_range_func(int, loff_t*, int, loff_t*, size_t,
                                      unsigned int);
 static copy_file_range_func* my_copy_file_range_func = NULL;
@@ -131,38 +127,4 @@ Java_sun_nio_ch_FileDispatcherImpl_transferTo0(JNIEnv *env, jobject this,
         return IOS_THROWN;
     }
     return n;
-}
-
-JNIEXPORT jlong JNICALL
-Java_sun_nio_ch_FileDispatcherImpl_skip0(JNIEnv *env, jclass cl, jobject fdo, jlong n)
-{
-    if (n < 1)
-        return 0;
-
-    const jint fd = fdval(env, fdo);
-
-    const long bs = n < MAX_SKIP_BUFFER_SIZE ? (long) n : MAX_SKIP_BUFFER_SIZE;
-    char buf[bs];
-    jlong tn = 0;
-
-    for (;;) {
-        const jlong remaining = n - tn;
-        const ssize_t count = remaining < bs ? (ssize_t) remaining : bs;
-        const ssize_t nr = read(fd, buf, count);
-        if (nr < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                return tn;
-            } else if (errno == EINTR) {
-                return IOS_INTERRUPTED;
-            } else {
-                JNU_ThrowIOExceptionWithLastError(env, "read");
-                return IOS_THROWN;
-            }
-        }
-        if (nr > 0)
-            tn += nr;
-        if (nr == bs)
-            continue;
-        return tn;
-    }
 }
