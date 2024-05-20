@@ -222,5 +222,5 @@ class UnixFileDispatcherImpl extends FileDispatcher {
 
     static native int setDirect0(FileDescriptor fd) throws IOException;
 
-    static native long skip0(FileDescriptor fd, long n);
+    private static native long skip0(FileDescriptor fd, long n);
 }
