@@ -28,9 +28,15 @@
 #include "nio_util.h"
 #include "sun_nio_ch_PipeDispatcherImpl.h"
 
-// MAX_SKIP_BUFFER_SIZE is used to determine the maximum buffer size to
-// use when skipping.
-static const ssize_t MAX_SKIP_BUFFER_SIZE = 4096;
+static int devnull;
+
+JNIEXPORT void JNICALL
+Java_sun_nio_ch_PipeDispatcherImpl_init0(JNIEnv *env, jclass klass)
+{
+    devnull = open("/dev/null", O_WRONLY);
+    if (devnull < 0)
+        JNU_ThrowIOExceptionWithLastError(env, "open /dev/null failed");
+}
 
 JNIEXPORT jlong JNICALL
 Java_sun_nio_ch_PipeDispatcherImpl_skip0(JNIEnv *env, jclass cl, jobject fdo, jlong n)
@@ -40,27 +46,25 @@ Java_sun_nio_ch_PipeDispatcherImpl_skip0(JNIEnv *env, jclass cl, jobject fdo, jl
 
     const jint fd = fdval(env, fdo);
 
-    const long bs = n < MAX_SKIP_BUFFER_SIZE ? (long) n : MAX_SKIP_BUFFER_SIZE;
-    char buf[bs];
     jlong tn = 0;
 
     for (;;) {
         const jlong remaining = n - tn;
-        const ssize_t count = remaining < bs ? (ssize_t) remaining : bs;
-        const ssize_t nr = read(fd, buf, count);
+        const ssize_t count = remaining < SSIZE_MAX ? (ssize_t) remaining : SSIZE_MAX;
+        const ssize_t nr = splice(fd, NULL, devnull, NULL, count, SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
         if (nr < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 return tn;
             } else if (errno == EINTR) {
                 return IOS_INTERRUPTED;
             } else {
-                JNU_ThrowIOExceptionWithLastError(env, "read");
+                JNU_ThrowIOExceptionWithLastError(env, "splice");
                 return IOS_THROWN;
             }
         }
         if (nr > 0)
             tn += nr;
-        if (nr == bs)
+        if (nr == SSIZE_MAX)
             continue;
         return tn;
     }
