@@ -34,6 +34,7 @@ import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SelectableChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Objects;
@@ -220,6 +221,10 @@ class ChannelInputStream extends InputStream {
 
         // special case where the channel is to a pipe
         if (ch instanceof SourceChannelImpl sci)
+            return sci.skip(n);
+
+        // special case where the channel is to a socket
+        if (ch instanceof SocketChannelImpl sci)
             return sci.skip(n);
 
         return super.skip(n);
