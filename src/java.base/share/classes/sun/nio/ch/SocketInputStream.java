@@ -84,6 +84,28 @@ class SocketInputStream extends InputStream {
     }
 
     @Override
+    public long skip(long n) throws IOException {
+        // TODO Support timeout
+        int timeout = timeoutSupplier.getAsInt();
+        if (!SocketReadEvent.enabled()) {
+            return implSkip(n, timeout);
+        }
+        long start = SocketReadEvent.timestamp();
+        long ns = implSkip(n, timeout);
+        SocketReadEvent.offer(start, ns, sc.remoteAddress(), timeout);
+        return ns;
+    }
+
+    private long implSkip(long n, int timeout) throws IOException {
+        if (timeout > 0) {
+            long nanos = MILLISECONDS.toNanos(timeout);
+            return sc.skip(n);
+        } else {
+            return sc.skip(n);
+        }
+    }
+
+    @Override
     public int available() throws IOException {
         return sc.available();
     }
