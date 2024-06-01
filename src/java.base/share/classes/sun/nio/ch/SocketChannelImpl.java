@@ -1701,4 +1701,96 @@ class SocketChannelImpl
             readLock.unlock();
         }
     }
+
+    /**
+     * Attempts to skip bytes from the socket.
+     */
+    private long trySkip(long len) throws IOException {
+        return IOUtil.skip(fd, len, nd);
+    }
+
+    /**
+     * Skipes bytes from the socket with a timeout.
+     * @throws SocketTimeoutException if the read timeout elapses
+     */
+    private long timedSkip(long len, long nanos) throws IOException {
+        long startNanos = System.nanoTime();
+        long n = trySkip(len);
+        while (n == IOStatus.UNAVAILABLE && isOpen()) {
+            long remainingNanos = nanos - (System.nanoTime() - startNanos);
+            if (remainingNanos <= 0) {
+                throw new SocketTimeoutException("Skip timed out");
+            }
+            park(Net.POLLIN, remainingNanos);
+            n = trySkip(len);
+        }
+        return n;
+    }
+
+    /**
+     * Skips bytes from the socket.
+     *
+     * @apiNote This method is for use by the socket adaptor.
+     *
+     * @throws IllegalBlockingModeException if the channel is non-blocking
+     * @throws SocketTimeoutException if the skip timeout elapses
+     */
+    long blockingSkip(long len, long nanos) throws IOException {
+        if (len == 0) {
+            // nothing to do
+            return 0;
+        }
+
+        readLock.lock();
+        try {
+            ensureOpenAndConnected();
+
+            // check that channel is configured blocking
+            if (!isBlocking())
+                throw new IllegalBlockingModeException();
+
+            long n = 0;
+            try {
+                beginRead(true);
+
+                // check if connection has been reset
+                if (connectionReset)
+                    throwConnectionReset();
+
+                // check if input is shutdown
+                if (isInputClosed)
+                    return IOStatus.EOF;
+
+                if (nanos > 0) {
+                    // change socket to non-blocking
+                    lockedConfigureBlocking(false);
+                    try {
+                        n = timedSkip(len, nanos);
+                    } finally {
+                        // restore socket to blocking mode (if channel is open)
+                        tryLockedConfigureBlocking(true);
+                    }
+                } else {
+                    // skip, no timeout
+                    configureSocketNonBlockingIfVirtualThread();
+                    n = trySkip(len);
+                    while (IOStatus.okayToRetry(n) && isOpen()) {
+                        park(Net.POLLIN);
+                        n = trySkip(len);
+                    }
+                }
+            } catch (ConnectionResetException e) {
+                connectionReset = true;
+                throwConnectionReset();
+            } finally {
+                endRead(true, n > 0);
+                if (n <= 0 && isInputClosed)
+                    return IOStatus.EOF;
+            }
+            assert n >= 0 || n == -1;
+            return n;
+        } finally {
+            readLock.unlock();
+        }
+    }
 }

@@ -99,9 +99,9 @@ class SocketInputStream extends InputStream {
     private long implSkip(long n, int timeout) throws IOException {
         if (timeout > 0) {
             long nanos = MILLISECONDS.toNanos(timeout);
-            return sc.skip(n);
+            return sc.blockingSkip(n, nanos);
         } else {
-            return sc.skip(n);
+            return sc.blockingSkip(n, 0);
         }
     }
 
