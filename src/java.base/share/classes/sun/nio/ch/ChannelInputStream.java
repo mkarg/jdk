@@ -34,7 +34,6 @@ import java.nio.channels.IllegalBlockingModeException;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.channels.SelectableChannel;
-import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.Objects;
