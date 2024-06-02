@@ -52,7 +52,8 @@ import static org.testng.Assert.assertTrue;
  * @build jdk.test.lib.RandomFactory
  * @run testng/othervm/timeout=180 Skip_2GB
  * @bug 8278268
- * @summary Tests if ChannelInputStream.skip correctly skips 2GB+.
+ * @summary Tests if ChannelInputStream.skip and SocketInputStream.skip
+ *          correctly skip 2GB+.
  * @key randomness
  */
 public class Skip_2GB extends SkipBase {
