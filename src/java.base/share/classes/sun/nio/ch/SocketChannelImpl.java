@@ -1710,7 +1710,7 @@ class SocketChannelImpl
     }
 
     /**
-     * Skipes bytes from the socket with a timeout.
+     * Skips bytes from the socket with a timeout.
      * @throws SocketTimeoutException if the read timeout elapses
      */
     private long timedSkip(long len, long nanos) throws IOException {
