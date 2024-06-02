@@ -85,7 +85,6 @@ class SocketInputStream extends InputStream {
 
     @Override
     public long skip(long n) throws IOException {
-        // TODO Support timeout
         int timeout = timeoutSupplier.getAsInt();
         if (!SocketReadEvent.enabled()) {
             return implSkip(n, timeout);
