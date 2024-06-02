@@ -92,7 +92,7 @@ class SocketDispatcher extends UnixDispatcher {
     static native long writev0(FileDescriptor fd, long address, int len)
         throws IOException;
 
-    static native long skip0(FileDescriptor fd, long n)
+    private static native long skip0(FileDescriptor fd, long n)
         throws IOException;
 
     static {
