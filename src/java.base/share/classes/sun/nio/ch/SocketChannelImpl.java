@@ -1640,7 +1640,7 @@ class SocketChannelImpl
      * value differently.
      *
      * @implSpec
-     * The {@code skip} method implementation of this class creates a
+     * The {@code skip} method implementation of this class creates an off-heap
      * byte array and then repeatedly reads into it until {@code n} bytes
      * have been read or the end of the stream has been reached. Subclasses are
      * encouraged to provide a more efficient implementation of this method.
