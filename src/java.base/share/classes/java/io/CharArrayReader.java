@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,10 @@ import java.util.Objects;
 /**
  * This class implements a character buffer that can be used as a
  * character-input stream.
+ *
+ * @apiNote
+ * {@link Reader#of(char[])} provides a method to read from a char array
+ * that may be more efficient than {@code CharArrayReader}.
  *
  * @author      Herb Jellinek
  * @since       1.1
