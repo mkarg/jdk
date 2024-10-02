@@ -254,6 +254,166 @@ public abstract class Reader implements Readable, Closeable {
     }
 
     /**
+     * Returns a {@code Reader} that reads characters from an array of chars.
+     * The reader is initially open and reading starts at index 0.
+     *
+     * <p> The returned reader supports the {@link #mark mark()} and
+     * {@link #reset reset()} operations.
+     *
+     * <p> The resulting reader is not safe for use by multiple
+     * concurrent threads. If the reader is to be used by more than one
+     * thread it should be controlled by appropriate synchronization.
+     *
+     * <p> If the array content changes while the reader is open, the behavior
+     * is undefined.
+     *
+     * @param ca {@code char[]} providing the character stream (not copied)
+     * @return a {@code Reader} which reads characters from {@code ca}
+     * @throws NullPointerException if {@code ca} is {@code null}
+     *
+     * @since 24
+     */
+    public static Reader of(char[] ca) {
+        return Reader.of(ca, 0, ca.length);
+    }
+
+    /**
+     * Returns a {@code Reader} that reads characters from an array of chars.
+     * The reader is initially open and reading starts at {@code offset}.
+     *
+     * <p> The returned reader supports the {@link #mark mark()} and
+     * {@link #reset reset()} operations.
+     *
+     * <p> The resulting reader is not safe for use by multiple
+     * concurrent threads. If the reader is to be used by more than one
+     * thread it should be controlled by appropriate synchronization.
+     *
+     * <p> If the array content changes while the reader is open, the behavior
+     * is undefined.
+     *
+     * @param ca {@code char[]} providing the character stream (not copied)
+     * @param offset Offset of the first char to read
+     * @param length Number of chars to read
+     * @return a {@code Reader} which reads characters from {@code ca}
+     * @throws NullPointerException if {@code ca} is {@code null}
+     * @throws IllegalArgumentException if {@code offset} is negative or
+     *         greater than {@code ca.length}, or if {@code length} is
+     *         negative, or if the sum of these two values is negative.
+     *
+     * @since 24
+     */
+    public static Reader of(final char[] ca, int offset, int length) {
+        if ((offset < 0) || (offset > ca.length) || (length < 0) ||
+                ((offset + length) < 0)) {
+            throw new IllegalArgumentException();
+        }
+
+        return new Reader() {
+            private boolean isClosed;
+            private int pos = offset;
+            private int markedPos = offset;
+            private int count = Math.min(offset + length, ca.length);
+
+            /** Checks to make sure that the stream has not been closed */
+            private void ensureOpen() throws IOException {
+                if (isClosed)
+                    throw new IOException("Stream closed");
+            }
+
+            @Override
+            public int read() throws IOException {
+                ensureOpen();
+                if (pos >= count)
+                    return -1;
+                else
+                    return ca[pos++];
+            }
+
+            @Override
+            public int read(char[] cbuf, int off, int len) throws IOException {
+                ensureOpen();
+                Objects.checkFromIndexSize(off, len, cbuf.length);
+                if (len == 0) {
+                    return 0;
+                }
+
+                if (pos >= count) {
+                    return -1;
+                }
+
+                int avail = count - pos;
+                if (len > avail) {
+                    len = avail;
+                }
+                if (len <= 0) {
+                    return 0;
+                }
+                System.arraycopy(ca, pos, cbuf, off, len);
+                pos += len;
+                return len;
+            }
+
+            @Override
+            public int read(CharBuffer target) throws IOException {
+                ensureOpen();
+
+                if (pos >= count) {
+                    return -1;
+                }
+
+                int avail = count - pos;
+                int len = Math.min(avail, target.remaining());
+                target.put(ca, pos, len);
+                pos += len;
+                return len;
+            }
+
+            @Override
+            public long skip(long n) throws IOException {
+                ensureOpen();
+
+                long avail = count - pos;
+                if (n > avail) {
+                    n = avail;
+                }
+                if (n < 0) {
+                    return 0;
+                }
+                pos += (int) n;
+                return n;
+            }
+
+            @Override
+            public boolean ready() throws IOException {
+                ensureOpen();
+                return (count - pos) > 0;
+            }
+
+            @Override
+            public boolean markSupported() {
+                return true;
+            }
+
+            @Override
+            public void mark(int readAheadLimit) throws IOException {
+                ensureOpen();
+                markedPos = pos;
+            }
+
+            @Override
+            public void reset() throws IOException {
+                ensureOpen();
+                pos = markedPos;
+            }
+
+            @Override
+            public void close() {
+                isClosed = true;
+            }
+        };
+    }
+
+    /**
      * The object used to synchronize operations on this stream.  For
      * efficiency, a character-stream object may use an object other than
      * itself to protect critical sections.  A subclass should therefore use
