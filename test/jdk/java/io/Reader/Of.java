@@ -22,6 +22,7 @@
  */
 
 import java.io.Reader;
+import java.io.CharArrayReader;
 import java.io.StringReader;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -77,7 +78,10 @@ public class Of {
                     // Reader.Of's result SHALL NOT convert to String
                     throw new UnsupportedOperationException();
                 }
-            })
+            }),
+            new CharArrayReader(CONTENT.toCharArray()),
+            Reader.of(CONTENT.toCharArray()),
+            Reader.of(CONTENT.toCharArray(), 0, CONTENT.length())
         };
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,29 +36,15 @@ import java.util.Objects;
  * @since       1.1
  */
 public class CharArrayReader extends Reader {
-    /** The character buffer. */
-    protected char[] buf;
 
-    /** The current buffer position. */
-    protected int pos;
-
-    /** The position of mark in buffer. */
-    protected int markedPos = 0;
-
-    /**
-     *  The index of the end of this buffer.  There is no valid
-     *  data at or beyond this index.
-     */
-    protected int count;
+    private final Reader r;
 
     /**
      * Creates a CharArrayReader from the specified array of chars.
      * @param buf       Input buffer (not copied)
      */
     public CharArrayReader(char[] buf) {
-        this.buf = buf;
-        this.pos = 0;
-        this.count = buf.length;
+        this(buf, 0, buf.length);
     }
 
     /**
@@ -79,20 +65,7 @@ public class CharArrayReader extends Reader {
      * @param length    Number of chars to read
      */
     public CharArrayReader(char[] buf, int offset, int length) {
-        if ((offset < 0) || (offset > buf.length) || (length < 0) ||
-            ((offset + length) < 0)) {
-            throw new IllegalArgumentException();
-        }
-        this.buf = buf;
-        this.pos = offset;
-        this.count = Math.min(offset + length, buf.length);
-        this.markedPos = offset;
-    }
-
-    /** Checks to make sure that the stream has not been closed */
-    private void ensureOpen() throws IOException {
-        if (buf == null)
-            throw new IOException("Stream closed");
+        r = Reader.of(buf, offset, length);
     }
 
     /**
@@ -102,11 +75,7 @@ public class CharArrayReader extends Reader {
      */
     public int read() throws IOException {
         synchronized (lock) {
-            ensureOpen();
-            if (pos >= count)
-                return -1;
-            else
-                return buf[pos++];
+            return r.read();
         }
     }
 
@@ -130,43 +99,14 @@ public class CharArrayReader extends Reader {
      */
     public int read(char[] cbuf, int off, int len) throws IOException {
         synchronized (lock) {
-            ensureOpen();
-            Objects.checkFromIndexSize(off, len, cbuf.length);
-            if (len == 0) {
-                return 0;
-            }
-
-            if (pos >= count) {
-                return -1;
-            }
-
-            int avail = count - pos;
-            if (len > avail) {
-                len = avail;
-            }
-            if (len <= 0) {
-                return 0;
-            }
-            System.arraycopy(buf, pos, cbuf, off, len);
-            pos += len;
-            return len;
+            return r.read(cbuf, off, len);
         }
     }
 
     @Override
     public int read(CharBuffer target) throws IOException {
         synchronized (lock) {
-            ensureOpen();
-
-            if (pos >= count) {
-                return -1;
-            }
-
-            int avail = count - pos;
-            int len = Math.min(avail, target.remaining());
-            target.put(buf, pos, len);
-            pos += len;
-            return len;
+            return r.read(target);
         }
     }
 
@@ -187,17 +127,7 @@ public class CharArrayReader extends Reader {
      */
     public long skip(long n) throws IOException {
         synchronized (lock) {
-            ensureOpen();
-
-            long avail = count - pos;
-            if (n > avail) {
-                n = avail;
-            }
-            if (n < 0) {
-                return 0;
-            }
-            pos += (int) n;
-            return n;
+            return r.skip(n);
         }
     }
 
@@ -209,8 +139,7 @@ public class CharArrayReader extends Reader {
      */
     public boolean ready() throws IOException {
         synchronized (lock) {
-            ensureOpen();
-            return (count - pos) > 0;
+            return r.ready();
         }
     }
 
@@ -235,8 +164,7 @@ public class CharArrayReader extends Reader {
      */
     public void mark(int readAheadLimit) throws IOException {
         synchronized (lock) {
-            ensureOpen();
-            markedPos = pos;
+            r.mark(readAheadLimit);
         }
     }
 
@@ -248,8 +176,7 @@ public class CharArrayReader extends Reader {
      */
     public void reset() throws IOException {
         synchronized (lock) {
-            ensureOpen();
-            pos = markedPos;
+            r.reset();
         }
     }
 
@@ -262,7 +189,11 @@ public class CharArrayReader extends Reader {
      */
     public void close() {
         synchronized (lock) {
-            buf = null;
+            try {
+                r.close();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
         }
     }
 }
