@@ -2333,4 +2333,15 @@ public abstract sealed class $Type$Buffer
 
 #end[streamableType]
 
+#if[char]
+    /**
+     * // TODO Inherit JavaDocs, but add apiNote that this is same as #get.
+     * @since 24
+     */
+    @Override
+    public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
+        get(srcBegin, dst, dstBegin, srcEnd - srcBegin);
+    }
+#end[char]
+
 }

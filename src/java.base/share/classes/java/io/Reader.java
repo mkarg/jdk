@@ -202,16 +202,7 @@ public abstract class Reader implements Readable, Closeable {
                 if (next >= length)
                     return -1;
                 int n = Math.min(length - next, len);
-                switch (cs) {
-                    case String s -> s.getChars(next, next + n, cbuf, off);
-                    case StringBuilder sb -> sb.getChars(next, next + n, cbuf, off);
-                    case StringBuffer sb -> sb.getChars(next, next + n, cbuf, off);
-                    case CharBuffer cb -> cb.get(next, cbuf, off, n);
-                    default -> {
-                        for (int i = next, j = next + n; i < j;)
-                            cbuf[off++] = cs.charAt(i++);
-                    }
-                }
+                cs.getChars(next, next + n, cbuf, off);
                 next += n;
                 return n;
             }
