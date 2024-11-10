@@ -48,7 +48,7 @@ public class StringReader extends Reader {
      * @param s  String providing the character stream.
      */
     public StringReader(String s) {
-        r = Reader.of(s);
+        r = Reader.of(s).withSynchronization();
     }
 
     /**
@@ -60,9 +60,7 @@ public class StringReader extends Reader {
      * @throws     IOException  If an I/O error occurs
      */
     public int read() throws IOException {
-        synchronized (lock) {
-            return r.read();
-        }
+        return r.read();
     }
 
     /**
@@ -84,9 +82,7 @@ public class StringReader extends Reader {
      * @throws     IOException  {@inheritDoc}
      */
     public int read(char[] cbuf, int off, int len) throws IOException {
-        synchronized (lock) {
-            return r.read(cbuf, off, len);
-        }
+        return r.read(cbuf, off, len);
     }
 
     /**
@@ -110,9 +106,7 @@ public class StringReader extends Reader {
      * @throws IOException {@inheritDoc}
      */
     public long skip(long n) throws IOException {
-        synchronized (lock) {
-            return r.skip(n);
-        }
+        return r.skip(n);
     }
 
     /**
@@ -123,9 +117,7 @@ public class StringReader extends Reader {
      * @throws     IOException  If the stream is closed
      */
     public boolean ready() throws IOException {
-        synchronized (lock) {
-            return r.ready();
-        }
+        return r.ready();
     }
 
     /**
@@ -149,9 +141,7 @@ public class StringReader extends Reader {
      * @throws     IOException  If an I/O error occurs
      */
     public void mark(int readAheadLimit) throws IOException {
-        synchronized (lock) {
-            r.mark(readAheadLimit);
-        }
+        r.mark(readAheadLimit);
     }
 
     /**
@@ -161,9 +151,7 @@ public class StringReader extends Reader {
      * @throws     IOException  If an I/O error occurs
      */
     public void reset() throws IOException {
-        synchronized (lock) {
-            r.reset();
-        }
+        r.reset();
     }
 
     /**
@@ -174,12 +162,10 @@ public class StringReader extends Reader {
      * while there is another thread blocking on the reader.
      */
     public void close() {
-        synchronized (lock) {
-            try {
-                r.close();
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        try {
+            r.close();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 }

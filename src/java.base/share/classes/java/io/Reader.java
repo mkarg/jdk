@@ -254,6 +254,105 @@ public abstract class Reader implements Readable, Closeable {
     }
 
     /**
+     * Returns a variant of this {@code Reader} that is safe for concurrent use
+     * by multiple threads.
+     *
+     * @implNote The default implementation locks a {@code ReentrantLock} before
+     * each method invocation, and unlocks it afterwards. Sublasses are
+     * encouraged to provide an optimized implementation.
+     *
+     * @return a variant of this {@code Reader} which is safe for concurrent use
+     * by multiple threads.
+     *
+     * @since 24
+     */
+    public Reader withSynchronization() {
+        final Lock lock = new ReentrantLock();
+
+        return new Reader() {
+            @Override
+            public int read() throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.read();
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public int read(char[] cbuf, int off, int len) throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.read(cbuf, off, len);
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public long skip(long n) throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.skip(n);
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public boolean ready() throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.ready();
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public boolean markSupported() {
+                lock.lock();
+                try {
+                    return Reader.this.markSupported();
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public void mark(int readAheadLimit) throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.mark();
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public void reset() throws IOException {
+                lock.lock();
+                try {
+                    return Reader.this.reset();
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public void close() {
+                lock.lock();
+                try {
+                    return Reader.this.close();
+                } finally {
+                    lock.unlock();
+                }
+            }
+        };
+    }
+
+    /**
      * The object used to synchronize operations on this stream.  For
      * efficiency, a character-stream object may use an object other than
      * itself to protect critical sections.  A subclass should therefore use
