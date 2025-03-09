@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PushbackInputStream;
 import java.nio.charset.Charset;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import sun.nio.cs.UTF_8;
@@ -72,10 +74,26 @@ import static java.util.zip.ZipUtils.*;
  * {@linkplain ZipFile} may be used when the information stored within
  * the CEN header is required.
  *
+ * The {@link #iterator()} method is used to provide an {@link Iterator} instance
+ * which internally invokes {@link #getNextEntry} eventually. There is no guarantee
+ * when exactly this method is invoked by the iterator. Iterating over entries
+ * becomes convenient using for-each:
+ *    {@snippet lang="java" :
+ *      Path jar = Path.of("foo.jar");
+ *      try (InputStream is = Files.newInputStream(jar);
+ *           ZipInputStream zis = new ZipInputStream(is)) {
+ *          for (ZipEntry ze : zis) {
+ *             var bytes = zis.readAllBytes();
+ *             System.out.printf("Entry: %s, bytes read: %s%n", ze.getName(),
+ *                     bytes.length);
+ *          }
+ *      }
+ *    }
+ *
  * @author      David Connelly
  * @since 1.1
  */
-public class ZipInputStream extends InflaterInputStream implements ZipConstants {
+public class ZipInputStream extends InflaterInputStream implements ZipConstants, Iterable {
     private ZipEntry entry;
     private int flag;
     private CRC32 crc = new CRC32();
@@ -485,6 +503,25 @@ public class ZipInputStream extends InflaterInputStream implements ZipConstants 
         if (!closed) {
             super.close();
             closed = true;
+        }
+    }
+
+    public Iterator<ZipEntry> iterator() {
+        return new Iterator<ZipEntry>() {
+            private ZipEntry nextEntry;
+
+            public boolean hasNext() {
+                if (nextEntry == null)
+                    nextEntry = getNextEntry();
+                return nextEntry != null;
+            }
+
+            public ZipEntry next() {
+                if (!hasNext())
+                    throw new NoSuchElementException();
+
+                return currentEntry;
+            }
         }
     }
 
