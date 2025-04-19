@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -269,13 +269,18 @@ public class BufferedWriter extends Writer {
      * @throws  IOException  If an I/O error occurs
      */
     public void write(String s, int off, int len) throws IOException {
+        super.write(s, off, len);
+    }
+
+    @Override
+    void implWrite(CharSequence csq, int off, int len) throws IOException {
         synchronized (lock) {
             ensureOpen();
             growIfNeeded(len);
             int b = off, t = off + len;
             while (b < t) {
                 int d = min(nChars - nextChar, t - b);
-                s.getChars(b, b + d, cb, nextChar);
+                csq.getChars(b, b + d, cb, nextChar);
                 b += d;
                 nextChar += d;
                 if (nextChar >= nChars)
