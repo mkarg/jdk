@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1049,14 +1049,8 @@ public class PrintWriter extends Writer {
      * as the invocation
      *
      * {@snippet lang=java :
-     *     out.write(csq.toString())
+     *     out.append(csq, 0, csq.length())
      * }
-     *
-     * <p> Depending on the specification of {@code toString} for the
-     * character sequence {@code csq}, the entire sequence may not be
-     * appended. For instance, invoking the {@code toString} method of a
-     * character buffer will return a subsequence whose content depends upon
-     * the buffer's position and limit.
      *
      * @param  csq
      *         The character sequence to append.  If {@code csq} is
@@ -1068,21 +1062,11 @@ public class PrintWriter extends Writer {
      * @since  1.5
      */
     public PrintWriter append(CharSequence csq) {
-        write(String.valueOf(csq));
-        return this;
+        return append(csq, 0, csq.length());
     }
 
     /**
      * Appends a subsequence of the specified character sequence to this writer.
-     *
-     * <p> An invocation of this method of the form
-     * {@code out.append(csq, start, end)}
-     * when {@code csq} is not {@code null}, behaves in
-     * exactly the same way as the invocation
-     *
-     * {@snippet lang=java :
-     *     out.write(csq.subSequence(start, end).toString())
-     * }
      *
      * @param  csq
      *         The character sequence from which a subsequence will be
@@ -1108,7 +1092,17 @@ public class PrintWriter extends Writer {
      */
     public PrintWriter append(CharSequence csq, int start, int end) {
         if (csq == null) csq = "null";
-        return append(csq.subSequence(start, end));
+        synchronized (lock) {
+            try {
+                ensureOpen();
+                out.append(csq, start, end);
+            } catch (InterruptedIOException x) {
+                Thread.currentThread().interrupt();
+            } catch (IOException x) {
+                trouble = true;
+            }
+        }
+        return this;
     }
 
     /**
