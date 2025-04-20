@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,6 +99,11 @@ public abstract class FilterWriter extends Writer {
      */
     public void write(String str, int off, int len) throws IOException {
         out.write(str, off, len);
+    }
+
+    @Override
+    void implWrite(CharSequence csq, int start, int end) throws IOException {
+        out.append(csq, start, end);
     }
 
     /**
