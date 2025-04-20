@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1996, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1996, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -225,19 +225,18 @@ public class OutputStreamWriter extends Writer {
     }
 
     @Override
-    public Writer append(CharSequence csq, int start, int end) throws IOException {
-        if (csq == null) csq = "null";
-        return append(csq.subSequence(start, end));
-    }
-
-    @Override
     public Writer append(CharSequence csq) throws IOException {
         if (csq instanceof CharBuffer) {
             se.write((CharBuffer) csq);
         } else {
-            se.write(String.valueOf(csq));
+            super.append(csq);
         }
         return this;
+    }
+
+    @Override
+    void implWrite(CharSequence csq, int off, int len) throws IOException {
+        se.append(csq, off, off + len);
     }
 
     /**
