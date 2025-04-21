@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2001, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,13 +123,12 @@ public final class StreamEncoder extends Writer {
         }
     }
 
+    public void write(CharSequence csq, int off, int len) throws IOException {
+        implWrite(csq, off, len);
+    }
+
     public void write(String str, int off, int len) throws IOException {
-        /* Check the len before creating a char buffer */
-        if (len < 0)
-            throw new IndexOutOfBoundsException();
-        char[] cbuf = new char[len];
-        str.getChars(off, off + len, cbuf, 0);
-        write(cbuf, 0, len);
+        implWrite(str, off, len);
     }
 
     public void write(CharBuffer cb) throws IOException {
@@ -258,6 +257,15 @@ public final class StreamEncoder extends Writer {
             cr.throwException();
         }
         haveLeftoverChar = false;
+    }
+
+    void implWrite(CharSequence csq, int off, int len) throws IOException {
+        /* Check the len before creating a char buffer */
+        if (len < 0)
+            throw new IndexOutOfBoundsException();
+        char[] cbuf = new char[len];
+        csq.getChars(off, off + len, cbuf, 0);
+        write(cbuf, 0, len);
     }
 
     void implWrite(char[] cbuf, int off, int len)
