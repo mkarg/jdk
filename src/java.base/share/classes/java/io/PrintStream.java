@@ -657,14 +657,18 @@ public class PrintStream extends FilterOutputStream
         }
     }
 
-    private void write(String s) {
+    private void write(CharSequence csq) {
+        write(csq, 0, csq.length());
+    }
+
+    private void write(CharSequence csq, int start, int end) {
         try {
             synchronized (this) {
                 ensureOpen();
-                textOut.write(s);
+                textOut.append(csq, start, end);
                 textOut.flushBuffer();
                 charOut.flushBuffer();
-                if (autoFlush && (s.indexOf('\n') >= 0))
+                if (autoFlush && (indexOf(csq, '\n') >= 0))
                     out.flush();
             }
         }
@@ -674,6 +678,17 @@ public class PrintStream extends FilterOutputStream
         catch (IOException x) {
             trouble = true;
         }
+    }
+
+    private static int indexOf(CharSequence csq, char c) {
+        if (csq instanceof String s)
+            return s.indexOf(c);
+
+        for (int i = 0, n = csq.length(); i < n; i++)
+            if (csq.charAt(i) == c)
+                return i;
+
+        return -1;
     }
 
     // Used to optimize away back-to-back flushing and synchronization when
@@ -1249,20 +1264,6 @@ public class PrintStream extends FilterOutputStream
     /**
      * Appends the specified character sequence to this output stream.
      *
-     * <p> An invocation of this method of the form {@code out.append(csq)}
-     * when {@code csq} is not {@code null}, behaves in exactly the same way
-     * as the invocation
-     *
-     * {@snippet lang=java :
-     *     out.print(csq.toString())
-     * }
-     *
-     * <p> Depending on the specification of {@code toString} for the
-     * character sequence {@code csq}, the entire sequence may not be
-     * appended.  For instance, invoking the {@code toString} method of a
-     * character buffer will return a subsequence whose content depends upon
-     * the buffer's position and limit.
-     *
      * @param  csq
      *         The character sequence to append.  If {@code csq} is
      *         {@code null}, then the four characters {@code "null"} are
@@ -1273,22 +1274,14 @@ public class PrintStream extends FilterOutputStream
      * @since  1.5
      */
     public PrintStream append(CharSequence csq) {
-        print(String.valueOf(csq));
+        if (csq == null) csq = "null";
+        write(csq);
         return this;
     }
 
     /**
      * Appends a subsequence of the specified character sequence to this output
      * stream.
-     *
-     * <p> An invocation of this method of the form
-     * {@code out.append(csq, start, end)} when
-     * {@code csq} is not {@code null}, behaves in
-     * exactly the same way as the invocation
-     *
-     * {@snippet lang=java :
-     *     out.print(csq.subSequence(start, end).toString())
-     * }
      *
      * @param  csq
      *         The character sequence from which a subsequence will be
@@ -1314,7 +1307,8 @@ public class PrintStream extends FilterOutputStream
      */
     public PrintStream append(CharSequence csq, int start, int end) {
         if (csq == null) csq = "null";
-        return append(csq.subSequence(start, end));
+        write(csq, start, end);
+        return this;
     }
 
     /**
