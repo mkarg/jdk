@@ -2037,19 +2037,6 @@ public abstract sealed class $Type$Buffer
      * Appends the specified character sequence  to this
      * buffer&nbsp;&nbsp;<i>(optional operation)</i>.
      *
-     * <p> An invocation of this method of the form {@code dst.append(csq)}
-     * behaves in exactly the same way as the invocation
-     *
-     * {@snippet lang=java :
-     *     dst.put(csq.toString())
-     * }
-     *
-     * <p> Depending on the specification of {@code toString} for the
-     * character sequence {@code csq}, the entire sequence may not be
-     * appended.  For instance, invoking the {@link $Type$Buffer#toString()
-     * toString} method of a character buffer will return a subsequence whose
-     * content depends upon the buffer's position and limit.
-     *
      * @param  csq
      *         The character sequence to append.  If {@code csq} is
      *         {@code null}, then the four characters {@code "null"} are
@@ -2071,20 +2058,12 @@ public abstract sealed class $Type$Buffer
         else if (csq instanceof CharBuffer cb)
             return put(cb);
         else
-            return put(csq.toString());
+            return append(csq, 0, csq.length());
     }
 
     /**
      * Appends a subsequence of the  specified character sequence  to this
      * buffer&nbsp;&nbsp;<i>(optional operation)</i>.
-     *
-     * <p> An invocation of this method of the form {@code dst.append(csq, start,
-     * end)} when {@code csq} is not {@code null}, behaves in exactly the
-     * same way as the invocation
-     *
-     * {@snippet lang=java :
-     *     dst.put(csq.subSequence(start, end).toString())
-     * }
      *
      * @param  csq
      *         The character sequence from which a subsequence will be
@@ -2127,7 +2106,9 @@ public abstract sealed class $Type$Buffer
             return this;
         }
         CharSequence cs = (csq == null ? "null" : csq);
-        return put(cs.subSequence(start, end).toString());
+        char[] buf = new char[end - start];
+        cs.getChars(start, end, buf, 0);
+        return put(buf);
     }
 
     /**
