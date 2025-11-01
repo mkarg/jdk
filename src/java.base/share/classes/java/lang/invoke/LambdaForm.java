@@ -409,7 +409,7 @@ class LambdaForm {
         }
         buf.append('_');
         buf.append(basicTypeSignature());
-        String name = buf.toString();
+        String name = buf.build();
         associateWithDebugName(this, name);
         return name;
     }
@@ -584,7 +584,7 @@ class LambdaForm {
         StringBuilder buf = new StringBuilder(arity() + 3);
         for (int i = 0, a = arity(); i < a; i++)
             buf.append(parameterType(i).basicTypeChar());
-        return buf.append('_').append(returnType().basicTypeChar()).toString();
+        return buf.append('_').append(returnType().basicTypeChar()).build();
     }
     static int signatureArity(String sig) {
         assert(isValidSignature(sig));
@@ -1007,7 +1007,7 @@ class LambdaForm {
             buf.append(":").append(basicTypeSignature());
             buf.append("/").append(vmentry);
         }
-        return buf.toString();
+        return buf.build();
     }
 
     @Override
@@ -1276,7 +1276,7 @@ class LambdaForm {
                 buf = new StringBuilder().append(signature, 0, i - c0reps);
             buf.append((char)c0).append(c0reps);
         }
-        return (buf == null) ? signature : buf.toString();
+        return (buf == null) ? signature : buf.build();
     }
 
     static final class Name {
@@ -1471,7 +1471,7 @@ class LambdaForm {
                     buf.append("(").append(a).append(")");
             }
             buf.append(")");
-            return buf.toString();
+            return buf.build();
         }
 
         private boolean typesMatch(NamedFunction function, Object ... arguments) {

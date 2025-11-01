@@ -356,7 +356,7 @@ public final class Class<T> implements java.io.Serializable,
 
             if (arrayDepth > 0) sb.append("[]".repeat(arrayDepth));
 
-            return sb.toString();
+            return sb.build();
         }
     }
 
@@ -1760,7 +1760,7 @@ public final class Class<T> implements java.io.Serializable,
                     .append(enclosingName)
                     .append('.')
                     .append(simpleName)
-                    .toString();
+                    .build();
         }
     }
 
@@ -2742,7 +2742,7 @@ public final class Class<T> implements java.io.Serializable,
                 name = sb.append(baseName.replace('.', '/'))
                     .append('/')
                     .append(name)
-                    .toString();
+                    .build();
             }
         } else {
             name = name.substring(1);
@@ -3958,7 +3958,7 @@ public final class Class<T> implements java.io.Serializable,
                     .append('.')
                     .append(name, index + 1, name.length())
                     .append(';')
-                    .toString();
+                    .build();
         } else {
             String name = getName().replace('.', '/');
             return StringConcatHelper.concat("L", name, ";");

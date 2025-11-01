@@ -204,7 +204,7 @@ abstract non-sealed class BoundMethodHandle extends MethodHandle {
                 sb.append(": ( ").append(theArg).append(" )");
             }
         }
-        return sb.append("\n").append(prefix).append("]").toString();
+        return sb.append("\n").append(prefix).append("]").build();
     }
 
     /*non-public*/

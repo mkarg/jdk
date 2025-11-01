@@ -431,9 +431,9 @@ abstract class ClassSpecializer<T,K,S extends ClassSpecializer<T,K,S>.SpeciesDat
             }
             String typeString;
             if (end.length() > 0) {
-                typeString = BytecodeName.toBytecodeName(buf.append("_").append(end).toString());
+                typeString = BytecodeName.toBytecodeName(buf.append("_").append(end).build());
             } else {
-                typeString = buf.toString();
+                typeString = buf.build();
             }
             return LambdaForm.shortenSignature(typeString);
         }

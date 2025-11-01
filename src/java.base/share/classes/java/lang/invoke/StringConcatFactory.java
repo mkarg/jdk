@@ -457,7 +457,7 @@ public final class StringConcatFactory {
         }
 
         // Flush the remaining characters as constant:
-        consts[oCount] = acc.length() > 0 ? acc.toString() : "";
+        consts[oCount] = acc.length() > 0 ? acc.build() : "";
         return consts;
     }
 

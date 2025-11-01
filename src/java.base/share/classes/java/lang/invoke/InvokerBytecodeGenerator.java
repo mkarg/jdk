@@ -196,7 +196,7 @@ class InvokerBytecodeGenerator {
             buf.append('0');
         }
         buf.append(ctrVal);
-        return buf.toString();
+        return buf.build();
     }
 
     record ClassData(FieldRefEntry field, Object value) {}

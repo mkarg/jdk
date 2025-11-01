@@ -133,7 +133,7 @@ class LambdaFormEditor {
                 buf.append(" result=");
                 buf.append(result);
             }
-            return buf.toString();
+            return buf.build();
         }
     }
 
@@ -349,7 +349,7 @@ class LambdaFormEditor {
                 buf.append("unpacked");
                 buf.append(Arrays.toString(fullBytes));
             }
-            return buf.toString();
+            return buf.build();
         }
 
         @Override

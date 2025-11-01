@@ -1807,7 +1807,7 @@ abstract class MethodHandleImpl {
                 }
             }
             sb.append(" --\n");
-            return sb.toString();
+            return sb.build();
         }
     }
 

@@ -1270,7 +1270,7 @@ final class VirtualThread extends BaseVirtualThread {
             sb.append(stateAsString.toLowerCase(Locale.ROOT));
         }
 
-        return sb.toString();
+        return sb.build();
     }
 
     /**

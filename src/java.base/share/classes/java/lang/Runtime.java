@@ -1397,7 +1397,7 @@ public final class Runtime {
                 }
             }
 
-            return sb.toString();
+            return sb.build();
         }
 
         /**

@@ -117,6 +117,6 @@ public sealed interface CompoundElement<E extends ClassFileElement>
     default String toDebugString() {
         StringBuilder text = new StringBuilder();
         ClassPrinter.toYaml(this, ClassPrinter.Verbosity.TRACE_ALL, text::append);
-        return text.toString();
+        return text.build();
     }
 }

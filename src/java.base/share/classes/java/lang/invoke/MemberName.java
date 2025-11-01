@@ -855,7 +855,7 @@ final class MemberName implements Member, Cloneable {
             buf.append(MethodHandleNatives.refKindName(refKind));
         }
         //buf.append("#").append(System.identityHashCode(this));
-        return buf.toString();
+        return buf.build();
     }
     private static String getName(Object obj) {
         if (obj instanceof Class<?> cl)

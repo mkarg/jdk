@@ -2068,7 +2068,7 @@ public class Thread implements Runnable {
         if (group != null)
             sb.append(group.getName());
         sb.append("]");
-        return sb.toString();
+        return sb.build();
     }
 
     /**

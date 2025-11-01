@@ -395,7 +395,7 @@ public final class StackTraceElement implements java.io.Serializable {
         }
         sb.append(')');
 
-        return sb.toString();
+        return sb.build();
     }
 
     private static int length(String s) {
