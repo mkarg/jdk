@@ -950,6 +950,6 @@ final class Resolver {
         mref.location().ifPresent(uri -> sb.append(" " + uri));
         if (descriptor.isAutomatic())
             sb.append(" automatic");
-        return sb.toString();
+        return sb.build();
     }
 }

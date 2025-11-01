@@ -139,7 +139,7 @@ public final class Parameter implements AnnotatedElement {
         sb.append(' ');
         sb.append(getName());
 
-        return sb.toString();
+        return sb.build();
     }
 
     /**

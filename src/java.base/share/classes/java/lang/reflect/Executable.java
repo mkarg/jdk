@@ -123,7 +123,7 @@ public abstract sealed class Executable extends AccessibleObject
                           .map(Type::getTypeName)
                           .collect(Collectors.joining(",", " throws ", "")));
             }
-            return sb.toString();
+            return sb.build();
         } catch (Exception e) {
             return "<" + e + ">";
         }
@@ -180,7 +180,7 @@ public abstract sealed class Executable extends AccessibleObject
                           .map(Type::getTypeName)
                           .collect(Collectors.joining(",", " throws ", "")));
             }
-            return sb.toString();
+            return sb.build();
         } catch (Exception e) {
             return "<" + e + ">";
         }

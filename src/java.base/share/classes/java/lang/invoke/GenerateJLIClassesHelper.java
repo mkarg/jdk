@@ -355,7 +355,7 @@ final class GenerateJLIClassesHelper {
                     sb.append(last);
                 }
             }
-            return sb.toString();
+            return sb.build();
         }
 
         private static void requireBasicType(char c) {

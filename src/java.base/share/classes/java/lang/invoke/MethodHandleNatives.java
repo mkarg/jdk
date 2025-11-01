@@ -578,7 +578,7 @@ class MethodHandleNatives {
             sb.append(getCharType(pt));
         }
         sb.append('_').append(getCharType(guardType.returnType()));
-        return sb.toString();
+        return sb.build();
     }
     static char getCharType(Class<?> pt) {
         return Wrapper.forBasicType(pt).basicTypeChar();

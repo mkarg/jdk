@@ -376,7 +376,7 @@ public final class Constructor<T> extends Executable {
         }
         sb.append(sj);
         sb.append(')');
-        return sb.toString();
+        return sb.build();
     }
 
     /**

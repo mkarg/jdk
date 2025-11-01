@@ -3319,7 +3319,7 @@ public final class String
             for (int i = 0; i < thisLen; ++i) {
                 sb.append(charAt(i)).append(replStr);
             }
-            return sb.toString();
+            return sb.build();
         }
     }
 

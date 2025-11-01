@@ -2381,7 +2381,7 @@ public final class ModuleDescriptor
             sb.append(", provides: ").append(provides);
         }
         sb.append(" }");
-        return sb.toString();
+        return sb.build();
     }
 
 

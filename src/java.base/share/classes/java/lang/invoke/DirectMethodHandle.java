@@ -739,7 +739,7 @@ sealed class DirectMethodHandle extends MethodHandle {
         if (isVolatile) {
             sb.append("Volatile");
         }
-        return sb.toString();
+        return sb.build();
     }
 
     static LambdaForm makePreparedFieldLambdaForm(byte formOp, boolean isVolatile, int ftypeKind) {
@@ -836,7 +836,7 @@ sealed class DirectMethodHandle extends MethodHandle {
             if (needsInit) {
                 nameBuilder.append("Init");
             }
-            LambdaForm.associateWithDebugName(form, nameBuilder.toString());
+            LambdaForm.associateWithDebugName(form, nameBuilder.build());
         }
 
         // NF_UNSAFE uses field form, avoid circular dependency in interpreter
