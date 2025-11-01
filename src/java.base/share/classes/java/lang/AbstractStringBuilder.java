@@ -2215,4 +2215,37 @@ abstract sealed class AbstractStringBuilder implements Appendable, CharSequence
         this.count = limit;
         return this;
     }
+
+    /**
+     * Returns a string representing the data in this sequence,
+     * then sets the length of the character sequence to zero
+     * and reduces the capacity to zero.
+     * <p>
+     * The {@code String} object that is returned contains the character
+     * sequence currently represented by this object. Subsequent
+     * changes to this sequence do not affect the contents of the
+     * returned {@code String}.
+     *
+     * @implNote In comparsion to {@link #toString()}, for performance reasons
+     *           this method prevents the creation of copies of the underlying
+     *           byte array if possible.
+     *
+     * @return a string representation of this sequence of characters.
+     *
+     * @since 26
+     */
+    public String build() {
+        if (count == 0)
+            return "";
+
+        String string = maybeLatin1 && !isLatin1(coder) || count < value.length >> coder
+                ? new String(this, null) // Create a copy, don't share the array
+                : new String(value, coder); // Don't create a copy, transfer ownership of array
+
+        coder = COMPACT_STRINGS ? LATIN1 : UTF16;
+        value = EMPTYVALUE;
+        count = 0;
+        maybeLatin1 = false;
+        return string;
+    }
 }

@@ -809,4 +809,11 @@ import jdk.internal.vm.annotation.IntrinsicCandidate;
     synchronized void getBytes(byte[] dst, int dstBegin, byte coder) {
         super.getBytes(dst, dstBegin, coder);
     }
+
+    @Override
+    public synchronized String build() {
+        String string = toStringCache == null ? super.build() : toStringCache;
+        toStringCache = null;
+        return string;
+    }
 }
