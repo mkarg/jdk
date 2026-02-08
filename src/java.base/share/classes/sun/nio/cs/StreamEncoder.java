@@ -124,11 +124,15 @@ public final class StreamEncoder extends Writer {
     }
 
     public void write(String str, int off, int len) throws IOException {
+        implWrite(str, off, len);
+    }
+
+    private void implWrite(CharSequence csq, int off, int len) throws IOException {
         /* Check the len before creating a char buffer */
         if (len < 0)
             throw new IndexOutOfBoundsException();
         char[] cbuf = new char[len];
-        str.getChars(off, off + len, cbuf, 0);
+        csq.getChars(off, off + len, cbuf, 0);
         write(cbuf, 0, len);
     }
 
@@ -141,6 +145,14 @@ public final class StreamEncoder extends Writer {
             }
         } finally {
             cb.position(position);
+        }
+    }
+
+    public Writer append(CharSequence csq) throws IOException {
+        synchronized (lock) {
+            if (csq == null) csq = "null";
+            implWrite(csq, 0, csq.length());
+            return this;
         }
     }
 
