@@ -235,7 +235,7 @@ public class OutputStreamWriter extends Writer {
         if (csq instanceof CharBuffer) {
             se.write((CharBuffer) csq);
         } else {
-            se.write(String.valueOf(csq));
+            se.append(csq);
         }
         return this;
     }
