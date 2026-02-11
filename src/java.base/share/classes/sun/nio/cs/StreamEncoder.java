@@ -131,6 +131,8 @@ public final class StreamEncoder extends Writer {
         /* Check the len before creating a char buffer */
         if (len < 0)
             throw new IndexOutOfBoundsException();
+        if (len == 0)
+            return;
         char[] cbuf = new char[len];
         csq.getChars(off, off + len, cbuf, 0);
         write(cbuf, 0, len);
