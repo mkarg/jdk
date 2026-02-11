@@ -156,6 +156,14 @@ public final class StreamEncoder extends Writer {
         }
     }
 
+    public Writer append(CharSequence csq, int start, int end) throws IOException {
+        synchronized (lock) {
+            if (csq == null) csq = "null";
+            implWrite(csq, start, end - start);
+            return this;
+        }
+    }
+
     public void flush() throws IOException {
         synchronized (lock) {
             ensureOpen();
