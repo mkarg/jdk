@@ -151,14 +151,22 @@ public final class StreamEncoder extends Writer {
     }
 
     public Writer append(CharSequence csq) throws IOException {
-        if (csq == null) csq = "null";
-        implWrite(csq, 0, csq.length());
+        if (csq instanceof CharBuffer cb) {
+            write(cb);
+        } else {
+            if (csq == null) csq = "null";
+            implWrite(csq, 0, csq.length());
+        }
         return this;
     }
 
     public Writer append(CharSequence csq, int start, int end) throws IOException {
-        if (csq == null) csq = "null";
-        implWrite(csq, start, end - start);
+        if (csq instanceof CharBuffer cb) {
+            write(cb.subSequence(start, end));
+        } else {
+            if (csq == null) csq = "null";
+            implWrite(csq, start, end - start);
+        }
         return this;
     }
 

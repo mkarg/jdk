@@ -232,11 +232,7 @@ public class OutputStreamWriter extends Writer {
 
     @Override
     public Writer append(CharSequence csq) throws IOException {
-        if (csq instanceof CharBuffer) {
-            se.write((CharBuffer) csq);
-        } else {
-            se.append(csq);
-        }
+        se.append(csq);
         return this;
     }
 
